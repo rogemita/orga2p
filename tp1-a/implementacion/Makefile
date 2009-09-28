@@ -19,19 +19,21 @@ LD = ld
 
 NASM = nasm
 
-NASMFLAGS = -f elf
+NASMFLAGS = -f elf -g
 
 INCLUDES = `pkg-config --cflags --libs opencv`
 
-CFLAGS = -Wall $(SVNDEF) $(OSDEF) $(INCLUDES)
+#CFLAGS = -Wall $(SVNDEF) $(OSDEF) $(INCLUDES)
+CFLAGS = -Wall $(INCLUDES)
 
 GFLAGS = -c -Wall $(SVNDEF) $(OSDEF) $(INCLUDES)
 
 LDFLAGS = 
 
 SOURCES = bordes.c
+ASMSOURCES = asm_sobel.asm
 
-ASMOBJECTS = $(SOURCES:.asm=.o)
+ASMOBJECTS = $(ASMSOURCES:.asm=.o)
 OBJECTS = $(SOURCES:.c=.o)
 
 EXECUTABLE = tp1
@@ -40,16 +42,15 @@ VERDE="\e[1;32m"
 BLANCO="\e[0;29m"
 AZUL="\e[1;34m"
 
-all: start $(SOURCES) $(EXECUTABLE) listo
+all: start $(SOURCES) $(ASMSOURCES) $(EXECUTABLE) listo
 
 start:
 	@echo -e $(VERDE)Instalando TP 1 v.$(shell svnversion -n .)$(BLANCO);
 
-$(EXECUTABLE): $(OBJECTS)
+$(EXECUTABLE): $(OBJECTS) $(ASMOBJECTS)
 	@echo -en $(BLANCO)"Linking TP 1...";
-#$(CC) $(CFLAGS) $(addprefix out/, $(+F)) -o $@
-	@$(CC) $(CFLAGS) -o $@ $(addprefix out/, $(+F))
-	@echo -e "                                  "$(AZUL)[ $(VERDE)OK $(AZUL)]
+	@$(CC) $(CFLAGS) $(addprefix out/, $(+F)) -o $@
+	@echo -e "                                  "$(AZUL)[ $(VERDE)OK $(AZUL)] $(BLANCO)
 
 %.o: %.asm
 	@$(NASM) $(NASMFLAGS) $< -o out/$@;
@@ -60,7 +61,7 @@ $(EXECUTABLE): $(OBJECTS)
 	echo -e $(BLANCO)"Compiling $*..."$$a$(AZUL)[ $(VERDE)OK $(AZUL)] $(BLANCO)
 
 .c.o:
-	@$(CC) $(CFLAGS) $< -o out/$@;
+	@$(CC) $(GFLAGS) $< -o out/$@;
 	@longitud=`echo "Compiling $*..." | wc -c`; \
 	cantEsp=`expr 60 - $$longitud`; \
 	a=""; \
@@ -70,9 +71,9 @@ $(EXECUTABLE): $(OBJECTS)
 clean:
 	@rm -f $(EXECUTABLE) out/*.o
 	@echo -en $(BLANCO)"Cleaning objects and executables files...       "
-	@echo -e $(AZUL)[ $(VERDE)OK $(AZUL)]
+	@echo -e $(AZUL)[ $(VERDE)OK $(AZUL)] $(BLANCO)
 
 listo:
-	@echo -e $(AZUL)"Tp1 is ready!, enjoy."; \
+	@echo -e $(AZUL)"Tp1 is ready!, enjoy." $(BLANCO); \
 	echo "Want execute Tp1 now? (y/n): "; \
 	read key; if [ $$key == "y" ]; then ./tp1; fi;
