@@ -62,8 +62,7 @@ asmSobel:
 	      add	eax,	ebx
 	      mov	ebx,	eax
 	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
-	      sub	bx,	ax	;se la resto al pixel destino
-	      mov	eax,	ebx
+	      sub	ax,	bx	;se la resto al pixel destino
 	      cmp	ax,	0x00FF
 	      jg	sobresaturo
 	      cmp	ax,	0x0000
