@@ -25,9 +25,8 @@
 ; }
 ; IplImage;
 
-%define NULL			0
-%define DEPTH			16
-%define WIDTH			40
+%define DEPTH		16
+%define WIDTH		40
 %define HEIGHT		44
 %define IMAGE_DATA 	68
 %define WIDTH_STEP	72

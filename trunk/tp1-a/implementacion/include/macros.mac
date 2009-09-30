@@ -23,7 +23,7 @@
 ;	tamanio		tamanio de memoria reservada al entrar al proc
 ;	doRet		se marca en 1 si debe llamar a ret
 ;========================
-%macro doLeave 0-2 0, 0
+%macro doLeave 0-2 0,0
 	pop ebx
 	pop esi
 	pop edi
