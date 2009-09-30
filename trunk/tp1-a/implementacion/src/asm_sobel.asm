@@ -32,10 +32,10 @@ asmSobel:
 	mov	ecx,	SRC		;ecx registro para el pixel de origen
 	mov	ecx,	[ecx + IMAGE_DATA]
 
-	mov	ebx,	DST		;ebx registro para el pixel de destino
-	mov	ebx,	[ebx + IMAGE_DATA]
-	add	ebx,	edi		;salteo la primera linea
-	inc	ebx			;salteo la primer columna
+	mov	esi,	DST		;esi registro para el pixel de destino
+	mov	esi,	[esi + IMAGE_DATA]
+	add	esi,	edi		;salteo la primera linea
+	inc	esi			;salteo la primer columna
 	
 	;==========================
 	; ESTO VALE SOLO PARA EL X DE SOBEL
@@ -46,33 +46,33 @@ asmSobel:
 	  sub	edx,	2		;le resto los pixeles laterales
 
 	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	ebx,	2
+	  add	esi,	2
 
 	  cicloX:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
 	      and	eax,	0xFF00FF00	;paso a dos words empaquetadas
 	      sar	eax,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
-	      mov	esi,	[ecx + edi]	;sumo dos veces la segunda linea
-	      and	esi,	0xFF00FF00	;paso a dos words empaquetadas
-	      sar	esi,	7	;desplazo siete bits a derecha para permitir operaciones en 8 bits
-	      add	eax,	esi
-	      mov	esi,	[ecx + edi * 2]	;sumo la tercera linea
-	      and	esi,	0xFF00FF00	;paso a dos words empaquetadas
-	      sar	esi,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
-	      add	eax,	esi
-	      mov	esi,	eax
+	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
+	      and	ebx,	0xFF00FF00	;paso a dos words empaquetadas
+	      sar	ebx,	7	;desplazo siete bits a derecha para permitir operaciones en 8 bits
+	      add	eax,	ebx
+	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
+	      and	ebx,	0xFF00FF00	;paso a dos words empaquetadas
+	      sar	ebx,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      add	eax,	ebx
+	      mov	ebx,	eax
 	      sar	eax,	16	;muevo eax a la parte izquierda de la matriz
-	      sub	eax,	esi	;se la resto al pixel destino
-	      cmp	ax,	0xFF
+	      sub	bx,	ax	;se la resto al pixel destino
+	      mov	eax,	ebx
+	      cmp	ax,	0x00FF
 	      jg	sobresaturo
-	      cmp	ax,	0
+	      cmp	ax,	0x0000
 	      jl	subsaturo
 	      volver:
-	      mov	eax,	esi
 
-	      mov	[ebx],	al	;mando el pixel
+	      mov	[esi],	al	;mando el pixel
 	      inc	ecx
-	      inc	ebx
+	      inc	esi
 	      dec edx
 	      jnz cicloX
 	  dec	dword HEIGHT
