@@ -41,8 +41,8 @@ asmSobel:
 	; ESTO VALE SOLO PARA EL X DE SOBEL
 	;==========================
 	cicloY:
-	  mov	edi,	WIDTH		;edi registro para el width	  
-	  mov	edx,	edi		;guardo el WIDTH_ALIGNED en un temporal
+	  mov	edx,	SRC		;edi registro para el width	  
+	  mov	edx,	[edx + WIDTH_STEP]	;guardo el WIDTH_ALIGNED en un temporal
 	  sub	edx,	2		;le resto los pixeles laterales
 
 	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
