@@ -27,8 +27,7 @@ asmSobel:
 	cmp	edi,	3		;reviso que tenga al menos 3 pixeles de ancho
 	jl	abort
 
-	mov	esi,	HEIGHT		;esi registro para el height
-	cmp	esi,	3		;reviso que tenga al menos 3 pixeles de alto
+	cmp	dword HEIGHT,	3		;reviso que tenga al menos 3 pixeles de alto
 	jl	abort
 	mov	ecx,	SRC		;ecx registro para el pixel de origen
 	mov	ecx,	[ecx + IMAGE_DATA]
@@ -51,21 +50,40 @@ asmSobel:
 
 	  cicloX:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
-	      add	eax,	[ecx + edi]	;sumo dos veces la segunda linea
-	      add	eax,	[ecx + edi]
-	      add	eax,	[ecx + edi * 2]	;sumo la tercera linea
-	      and	eax,	0xF0F0	;acá se puede estar estropeando la saturacion
-	      sar	eax,	4	;desplazo cuatro bits a derecha para permitir operaciones en 8 bits
-	      and	dword [ebx],	0xFFF0	;voy a pasar la parte más baja de la doublew
-	      add	[ebx],	al	;mando el pixel
-	      sar	eax,	8	;muevo eax a la parte izquierda de la matriz
-	      sub	[ebx],	al	;se la resto al pixel destino
+	      and	eax,	0xFF00FF00	;paso a dos words empaquetadas
+	      sar	eax,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      mov	esi,	[ecx + edi]	;sumo dos veces la segunda linea
+	      and	esi,	0xFF00FF00	;paso a dos words empaquetadas
+	      sar	esi,	7	;desplazo siete bits a derecha para permitir operaciones en 8 bits
+	      add	eax,	esi
+	      mov	esi,	[ecx + edi * 2]	;sumo la tercera linea
+	      and	esi,	0xFF00FF00	;paso a dos words empaquetadas
+	      sar	esi,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      add	eax,	esi
+	      mov	esi,	eax
+	      sar	eax,	16	;muevo eax a la parte izquierda de la matriz
+	      sub	eax,	esi	;se la resto al pixel destino
+	      cmp	ax,	0xFF
+	      jg	sobresaturo
+	      cmp	ax,	0
+	      jl	subsaturo
+	      volver:
+	      mov	eax,	esi
+
+	      mov	[ebx],	al	;mando el pixel
 	      inc	ecx
 	      inc	ebx
 	      dec edx
 	      jnz cicloX
-	  dec	esi
+	  dec	dword HEIGHT
 	  jnz	cicloY
 
 	abort:
 	doLeave 0, 1
+
+	      sobresaturo:
+	      mov	eax,	0x000000FF
+	      jmp	volver
+	      subsaturo:
+	      mov	eax,	0
+	      jmp	volver
