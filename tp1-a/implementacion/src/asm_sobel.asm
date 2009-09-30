@@ -51,17 +51,17 @@ asmSobel:
 	  cicloX:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
 	      and	eax,	0xFF00FF00	;paso a dos words empaquetadas
-	      sar	eax,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      shr	eax,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
 	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
 	      and	ebx,	0xFF00FF00	;paso a dos words empaquetadas
-	      sar	ebx,	7	;desplazo siete bits a derecha para permitir operaciones en 8 bits
+	      shr	ebx,	7	;desplazo siete bits a derecha para permitir operaciones en 8 bits
 	      add	eax,	ebx
 	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
 	      and	ebx,	0xFF00FF00	;paso a dos words empaquetadas
-	      sar	ebx,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      shr	ebx,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
 	      add	eax,	ebx
 	      mov	ebx,	eax
-	      sar	eax,	16	;muevo eax a la parte izquierda de la matriz
+	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
 	      sub	bx,	ax	;se la resto al pixel destino
 	      mov	eax,	ebx
 	      cmp	ax,	0x00FF
