@@ -74,6 +74,4 @@ clean:
 	@echo -e $(AZUL)[ $(VERDE)OK $(AZUL)] $(BLANCO)
 
 listo:
-	@echo -e $(AZUL)"Tp1 is ready!, enjoy." $(BLANCO); \
-	echo "Want execute Tp1 now? (y/n): "; \
-	read key; if [ $$key == "y" ]; then ./tp1; fi;
+	@echo -e $(AZUL)"Tp1 is ready!, enjoy." $(BLANCO);
