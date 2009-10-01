@@ -12,6 +12,21 @@
 %define HEIGHT	[ebp + 20]
 %define XORDER	[ebp + 24]
 %define YORDER	[ebp + 28]
+%define T_HEIGHT	[ebp - 4]
+
+;=================
+; doCorridaX
+;=================
+; Pinta una linea en horizontal de negro
+; =================
+%macro doCorridaX 0
+	mov ebx,	edi
+	%%corridaX:
+		and byte [esi], bl
+		inc esi		
+		dec ebx
+		jnz %%corridaX
+%endmacro
 
 global asmSobel
 
@@ -20,22 +35,23 @@ section .data
 section .text
 
 asmSobel:
-	doEnter
+	doEnter 1
 	
+	mov eax, HEIGHT
+	mov dword T_HEIGHT, eax
+
 	mov	edx,	SRC
 	mov	edi,	[edx + WIDTH_STEP]
-	cmp	edi,	3		;reviso que tenga al menos 3 pixeles de ancho
-	jl	abort
-
-	cmp	dword HEIGHT,	3		;reviso que tenga al menos 3 pixeles de alto
-	jl	abort
+	
 	mov	ecx,	SRC		;ecx registro para el pixel de origen
 	mov	ecx,	[ecx + IMAGE_DATA]
 
 	mov	esi,	DST		;esi registro para el pixel de destino
 	mov	esi,	[esi + IMAGE_DATA]
+
 	add	esi,	edi		;salteo la primera linea
 	inc	esi			;salteo la primer columna
+	inc  esi
 	
 	;==========================
 	; ESTO VALE SOLO PARA EL X DE SOBEL
@@ -74,11 +90,32 @@ asmSobel:
 	      inc	esi
 	      dec edx
 	      jnz cicloX
-	  dec	dword HEIGHT
+	  dec	dword T_HEIGHT
 	  jnz	cicloY
 
+	mov esi, DST		;esi registro para el pixel de destino
+	mov esi, [esi + IMAGE_DATA]
+
+	mov	edx,	SRC
+	mov	edi,	[edx + WIDTH_STEP]
+
+	mov ecx, HEIGHT
+	mov ebx, WIDTH
+	
+	ciclo:
+		cmp ecx, 0
+		je abort
+		mov byte [esi], 0x0
+		mov eax, esi
+		lea esi, [esi + ebx]
+		mov byte [esi-1], 0
+		mov esi, eax
+		add esi, edi
+		dec ecx
+		jmp ciclo
+
 	abort:
-	doLeave 0, 1
+	doLeave 1, 1
 
 	      sobresaturo:
 	      mov	eax,	0x000000FF
