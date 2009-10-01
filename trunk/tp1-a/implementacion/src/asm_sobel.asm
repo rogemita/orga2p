@@ -51,14 +51,13 @@ asmSobel:
 
 	add	esi,	edi		;salteo la primera linea
 	inc	esi			;salteo la primer columna
-	inc  esi
-	
+	;inc  esi
+	;HAY QUE CORREGIR LO DE LA BASURA
 	;==========================
 	; ESTO VALE SOLO PARA EL X DE SOBEL
 	;==========================
 	cicloY:
-	  mov	edx,	SRC		;edi registro para el width	  
-	  mov	edx,	[edx + WIDTH_STEP]	;guardo el WIDTH_ALIGNED en un temporal
+	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
 
 	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
@@ -66,15 +65,15 @@ asmSobel:
 
 	  cicloX:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
-	      and	eax,	0xFF00FF00	;paso a dos words empaquetadas
-	      shr	eax,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
+	      ;shr	eax,8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
 	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
-	      and	ebx,	0xFF00FF00	;paso a dos words empaquetadas
-	      shr	ebx,	7	;desplazo siete bits a derecha para permitir operaciones en 8 bits
+	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
+	      shl	ebx,1	;desplazo siete bits a derecha para permitir operaciones en 8 bits
 	      add	eax,	ebx
 	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
-	      and	ebx,	0xFF00FF00	;paso a dos words empaquetadas
-	      shr	ebx,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
+	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
+	      ;shr	ebx,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
 	      add	eax,	ebx
 	      mov	ebx,	eax
 	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
