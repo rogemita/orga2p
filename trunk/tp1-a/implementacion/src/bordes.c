@@ -11,6 +11,7 @@ int main( int argc, char** argv )
 	IplImage * src = 0;
 	IplImage * dst = 0;
 	IplImage * dst_asm = 0;
+	IplImage * buf_asm = 0;
 	IplImage * dst_ini = 0;
 	
 	char* filename = argc == 2 ? argv[1] : (char*)"img/lena.bmp";
@@ -30,6 +31,10 @@ int main( int argc, char** argv )
 	// Creo una IplImage para la salida de la funcion en asembler
 	if( (dst_asm = cvCreateImage (cvGetSize (src), IPL_DEPTH_8U, 1) ) == 0 )
 		return -1;
+
+	// Creo una IplImage para el buffer de la funcion en asembler
+	if( (buf_asm = cvCreateImage (cvGetSize (src), IPL_DEPTH_8U, 1) ) == 0 )
+		return -1;
 	
 	// Aplico el filtro (Sobel con derivada x en este caso) y salvo imagen 
 	cvSobel(src, dst, 1,0,3); 	// Esta parte es la que tienen que programar los alumnos en ASM	y comparar
@@ -48,6 +53,17 @@ int main( int argc, char** argv )
 	asmSobel(src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, 1, 1);
 	cvSaveImage("img/derivada xy.BMP", dst);
 	cvSaveImage("img/derivada xyASM.BMP", dst_asm);	
+	/*
+	int i = 0;
+	for(i = 0; i < 2; i++){
+	  if(i % 2 == 0)
+	    asmSobel(dst_asm, buf_asm, cvGetSize (src).width, cvGetSize(src).height, 1, 1);
+	  else
+	    asmSobel(buf_asm, dst_asm, cvGetSize (src).width, cvGetSize(src).height, 1, 1);
+	}
+	*/
+	asmSobel(dst_asm, buf_asm, cvGetSize (src).width, cvGetSize(src).height, 1, 1);
+	cvSaveImage("img/derivada xyASMMult.BMP", buf_asm);	
 
 	return 0;
 
