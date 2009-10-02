@@ -87,7 +87,7 @@ asmSobel:
 	      jl	subsaturo
 	      volver:
 
-	      mov	[esi],	al	;mando el pixel
+	      add	[esi],	al	;mando el pixel
 	      inc	ecx
 	      inc	esi
 	      dec edx
@@ -155,13 +155,52 @@ asmSobel:
 	      jl	subsaturo2
 	      volver2:
 
-	      mov	[esi],	bl	;mando el pixel
+	      add	[esi],	bl	;mando el pixel
+	      noPintar2:
 	      inc	ecx
 	      inc	esi
 	      dec edx
 	      jnz cicloX2
 	  dec	dword T_HEIGHT
 	  jnz	cicloY2
+
+	;==========================
+	; TRESHOLD
+	;==========================
+	mov eax, HEIGHT
+	mov dword T_HEIGHT, eax
+
+	mov	edx,	SRC
+	mov	edi,	[edx + WIDTH_STEP]
+	
+	mov	ecx,	SRC		;ecx registro para el pixel de origen
+	mov	ecx,	[ecx + IMAGE_DATA]
+
+	mov	esi,	DST		;esi registro para el pixel de destino
+	mov	esi,	[esi + IMAGE_DATA]
+
+	add	esi,	edi		;salteo la primera linea
+	inc	esi			;salteo la primer columna
+
+	cicloY3:
+	 mov edx, edi
+	  sub	edx,	2		;le resto los pixeles laterales
+
+	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
+	  add	esi,	2
+
+	  cicloX3:
+	      cmp	byte [esi], 	0xF0
+	      jge	seguirTreshold
+
+	      mov	byte [esi],	0	;mato el pixel
+	      seguirTreshold:
+	      inc	ecx
+	      inc	esi
+	      dec edx
+	      jnz cicloX3
+	  dec	dword T_HEIGHT
+	  jnz	cicloY3
 
 	pintaBordes:
 	mov esi, DST		;esi registro para el pixel de destino
