@@ -41,7 +41,14 @@ int main( int argc, char** argv )
 	cvSobel(src, dst, 0,1,3);    // Esta parte es la que tienen que programar los alumnos en ASM	y comparar
 	asmSobel(src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, 0, 1);
 	cvSaveImage("img/derivada y.BMP", dst);
-	
+	cvSaveImage("img/derivada yASM.BMP", dst_asm);	
+
+	// Aplico el filtro (Sobel con derivada x e y en esta caso) y salvo imagen 
+	cvSobel(src, dst, 1,1,3);    // Esta parte es la que tienen que programar los alumnos en ASM	y comparar
+	asmSobel(src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, 1, 1);
+	cvSaveImage("img/derivada xy.BMP", dst);
+	cvSaveImage("img/derivada xyASM.BMP", dst_asm);	
+
 	return 0;
 
 }
