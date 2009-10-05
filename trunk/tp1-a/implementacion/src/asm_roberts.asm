@@ -1,4 +1,4 @@
-;void asmSobel(const char* src, char* dst, int ancho, int alto, int xorder, int yorder)
+;void asmRoberts(const char* src, char* dst, int ancho, int alto, int xorder, int yorder)
 
 %include "include/defines.inc"
 %include "include/offset.inc"
@@ -28,13 +28,13 @@
 		jnz %%corridaX
 %endmacro
 
-global asmSobel
+global asmRoberts
 
 section .data
 
 section .text
 
-asmSobel:
+asmRoberts:
 	doEnter 1
 
 	mov eax, HEIGHT
@@ -63,13 +63,12 @@ asmSobel:
 	      jnz cicloXcls
 	  dec	dword T_HEIGHT
 	  jnz	cicloYcls
-	
-	cmp dword XORDER, 0
-	je	ySobel
 
-	xSobel:
+	xRoberts:
+	cmp dword XORDER, 0
+	je	yRoberts
 	;==========================
-	; SOBEL XORDER
+	; ROBERTS XORDER
 	;==========================
 	mov eax, HEIGHT
 	mov dword T_HEIGHT, eax
@@ -80,56 +79,40 @@ asmSobel:
 	mov	esi,	DST		;esi registro para el pixel de destino
 	mov	esi,	[esi + IMAGE_DATA]
 
-	add	esi,	edi		;salteo la primera linea
-	inc	esi			;salteo la primer columna
-
-	mov	eax,	0xFFFFFFFF	;meto un dato que nunca tendra dentro del ciclo para hacer un salto
-  
-	cicloY:
+	cicloY4:
 	 mov edx, edi
-	  sub	edx,	2		;le resto los pixeles laterales
-	  
-	  cmp	eax, 0xFFFFFFFF
-	  je cicloX
-	
-	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	esi,	2
+	  sub	edx,	1		;le resto los pixeles laterales
 
-	  cicloX:
-	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
-	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
-	      ;shr	eax,8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
-	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
-	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
-	      shl	ebx,1	;desplazo siete bits a derecha para permitir operaciones en 8 bits
-	      add	eax,	ebx
-	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
-	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
-	      ;shr	ebx,	8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
-	      add	eax,	ebx
-	      mov	ebx,	eax
-	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
+	  inc	ecx			;sumo dos para llevar al primero de la linea siguiente
+	  inc	esi
+
+	  cicloX4:
+	      mov	ax,	[ecx]	;cargo 4 pixeles en eax
+	      and	ax,	0x00FF
+	      
+	      mov	bx,	[ecx + edi]	;sumo dos veces la segunda linea
+	      shr	bx,	8	;desplazo 8 bits a derecha para permitir operaciones en 8 bits
+
 	      sub	ax,	bx	;se la resto al pixel destino
 	      cmp	ax,	0x00FF
 	      jg	sobresaturo
 	      cmp	ax,	0x0000
 	      jl	subsaturo
 	      volver:
-
 	      add	[esi],	al	;mando el pixel
 	      inc	ecx
 	      inc	esi
 	      dec edx
-	      jnz cicloX
+	      jnz cicloX4
 	  dec	dword T_HEIGHT
-	  jnz	cicloY
+	  jnz	cicloY4
 
-	ySobel:
+	yRoberts:
 
 	cmp dword YORDER, 0
 	je	pintaBordes
 	;==========================
-	; SOBEL YORDER
+	; ROBERTS YORDER
 	;==========================
 	mov eax, HEIGHT
 	mov dword T_HEIGHT, eax
@@ -143,40 +126,21 @@ asmSobel:
 	mov	esi,	DST		;esi registro para el pixel de destino
 	mov	esi,	[esi + IMAGE_DATA]
 
-	add	esi,	edi		;salteo la primera linea
-	inc	esi			;salteo la primer columna
-
-	cicloY2:
+	cicloY5:
 	 mov edx, edi
-	  sub	edx,	2		;le resto los pixeles laterales
+	  sub	edx,	1		;le resto los pixeles laterales
 
-	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	esi,	2
+	  inc	ecx			;sumo dos para llevar al primero de la linea siguiente
+	  inc	esi	
 
-	  cicloX2:
-	      mov	eax,	[ecx + edi * 2]		;cargo cuatro pixeles en eax
-	      mov	ebx,	eax		;copio a ebx
-	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
-	      and	ebx,	0x0000FF00	;hago lo mismo con el pixel del medio
-	      shr	ebx,	7
-	      add	bx,	ax		;acumulo el primero con el segundo
-	      and	ebx,	0x0000FFFF
-	      shr	eax,	16
-	      add	bx,	ax		;ya acumulamos los primeros en bx
-
-	      mov	eax,	[ecx]	;cargo la tercera linea
-	      and	eax,	0x00FFFFFF
-	      ror	eax,	16		;paso la parte izq a der i.e. me queda el primer pixel en ax en una word
-	      sub	bx,	ax		;resto el primer pixel
-	      xor	ax,	ax		;borro la parte baja me quedan los otros dos arriba
-	      or	ebx,	eax		;paso la parte alta de eax a ebx como contenedor temporal queda: px2 px3 \ acum
-	      shr	eax,	16		;bajo los dos pixeles altos
-	      and	eax,	0x000000FF	;me quedo con el tercer pixel
-	      sub	bx,	ax		;resto el tercer pixel
-	      mov	eax,	ebx		;voy a recuperar el segundo pixel
-	      and	eax,	0xFF000000
-	      shr	eax,	23		;lo paso a derecha multiplicado por dos
-	      sub	bx,	ax		;resto el segundo pixel
+	  cicloX5:
+	  	  mov	bx,	[ecx]	;cargo la primera linea
+		  shr	bx, 8 ;lo llevo a la parte menos significativa
+		  
+	      mov	ax,	[ecx + edi]		;cargo un pixel en eax
+	      and	ax,	0x00FF	;paso a dos words empaquetadas
+		  
+	      sub	bx,	ax		;resto el  pixel
 	      cmp	bx,	0x00FF
 	      jg	sobresaturo2
 	      cmp	bx,	0x0000
@@ -188,10 +152,9 @@ asmSobel:
 	      inc	ecx
 	      inc	esi
 	      dec edx
-	      jnz cicloX2
+	      jnz cicloX5
 	  dec	dword T_HEIGHT
-	  jnz	cicloY2
-
+	  jnz	cicloY5	  
 
 	pintaBordes:
 	mov esi, DST		;esi registro para el pixel de destino

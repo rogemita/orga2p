@@ -1,4 +1,4 @@
-;void asmSobel(const char* src, char* dst, int ancho, int alto, int xorder, int yorder)
+;void asmPrewitt(const char* src, char* dst, int ancho, int alto, int xorder, int yorder)
 
 %include "include/defines.inc"
 %include "include/offset.inc"
@@ -28,13 +28,13 @@
 		jnz %%corridaX
 %endmacro
 
-global asmSobel
+global asmPrewitt
 
 section .data
 
 section .text
 
-asmSobel:
+asmPrewitt:
 	doEnter 1
 
 	mov eax, HEIGHT
@@ -63,13 +63,14 @@ asmSobel:
 	      jnz cicloXcls
 	  dec	dword T_HEIGHT
 	  jnz	cicloYcls
-	
-	cmp dword XORDER, 0
-	je	ySobel
 
-	xSobel:
+
+	cmp dword XORDER, 0
+	je	yPrewitt
+
+	xPrewitt:
 	;==========================
-	; SOBEL XORDER
+	; PEWRITT XORDER
 	;==========================
 	mov eax, HEIGHT
 	mov dword T_HEIGHT, eax
@@ -84,24 +85,24 @@ asmSobel:
 	inc	esi			;salteo la primer columna
 
 	mov	eax,	0xFFFFFFFF	;meto un dato que nunca tendra dentro del ciclo para hacer un salto
-  
-	cicloY:
+
+	cicloY6:
 	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
-	  
+
 	  cmp	eax, 0xFFFFFFFF
-	  je cicloX
-	
+	  je cicloX6
+
 	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
 	  add	esi,	2
 
-	  cicloX:
+	  cicloX6:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
 	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
 	      ;shr	eax,8	;desplazo ocho bits a derecha para permitir operaciones en 8 bits
 	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
 	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
-	      shl	ebx,1	;desplazo siete bits a derecha para permitir operaciones en 8 bits
+	     ;shl	ebx,1	;desplazo siete bits a derecha para permitir operaciones en 8 bits
 	      add	eax,	ebx
 	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
 	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
@@ -111,25 +112,25 @@ asmSobel:
 	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
 	      sub	ax,	bx	;se la resto al pixel destino
 	      cmp	ax,	0x00FF
-	      jg	sobresaturo
+	      jg	sobresaturo6
 	      cmp	ax,	0x0000
-	      jl	subsaturo
-	      volver:
+	      jl	subsaturo6
+	      volver6:
 
 	      add	[esi],	al	;mando el pixel
 	      inc	ecx
 	      inc	esi
 	      dec edx
-	      jnz cicloX
+	      jnz cicloX6
 	  dec	dword T_HEIGHT
-	  jnz	cicloY
+	  jnz	cicloY6
 
-	ySobel:
+	yPrewitt:
 
 	cmp dword YORDER, 0
 	je	pintaBordes
 	;==========================
-	; SOBEL YORDER
+	; PREWITT YORDER
 	;==========================
 	mov eax, HEIGHT
 	mov dword T_HEIGHT, eax
@@ -146,19 +147,19 @@ asmSobel:
 	add	esi,	edi		;salteo la primera linea
 	inc	esi			;salteo la primer columna
 
-	cicloY2:
+	cicloY7:
 	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
 
 	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
 	  add	esi,	2
 
-	  cicloX2:
+	  cicloX7:
 	      mov	eax,	[ecx + edi * 2]		;cargo cuatro pixeles en eax
 	      mov	ebx,	eax		;copio a ebx
 	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
 	      and	ebx,	0x0000FF00	;hago lo mismo con el pixel del medio
-	      shr	ebx,	7
+	      shr	ebx,	8
 	      add	bx,	ax		;acumulo el primero con el segundo
 	      and	ebx,	0x0000FFFF
 	      shr	eax,	16
@@ -175,24 +176,23 @@ asmSobel:
 	      sub	bx,	ax		;resto el tercer pixel
 	      mov	eax,	ebx		;voy a recuperar el segundo pixel
 	      and	eax,	0xFF000000
-	      shr	eax,	23		;lo paso a derecha multiplicado por dos
+	      shr	eax,	24		;lo paso a derecha multiplicado por dos
 	      sub	bx,	ax		;resto el segundo pixel
 	      cmp	bx,	0x00FF
-	      jg	sobresaturo2
+	      jg	sobresaturo7
 	      cmp	bx,	0x0000
-	      jl	subsaturo2
-	      volver2:
+	      jl	subsaturo7
+	      volver7:
 
 	      add	[esi],	bl	;mando el pixel
-	      noPintar2:
+	      noPintar7:
 	      inc	ecx
 	      inc	esi
 	      dec edx
-	      jnz cicloX2
+	      jnz cicloX7
 	  dec	dword T_HEIGHT
-	  jnz	cicloY2
-
-
+	  jnz	cicloY7
+	  
 	pintaBordes:
 	mov esi, DST		;esi registro para el pixel de destino
 	mov esi, [esi + IMAGE_DATA]
@@ -219,17 +219,16 @@ asmSobel:
 
 	abort:
 	doLeave 1, 1
+	      sobresaturo6:
+	      mov	al,	0xFF
+	      jmp	volver6
+	      subsaturo6:
+	      mov	al,	0
+	      jmp	volver6
 
-	      sobresaturo:
-	      mov	eax,	0x000000FF
-	      jmp	volver
-	      subsaturo:
-	      mov	eax,	0
-	      jmp	volver
-
-	      sobresaturo2:
-	      mov	ebx,	0x000000FF
-	      jmp	volver2
-	      subsaturo2:
-	      mov	ebx,	0
-	      jmp	volver2
+	      sobresaturo7:
+	      mov	bl,	0xFF
+	      jmp	volver7
+	      subsaturo7:
+	      mov	bl,	0
+	      jmp	volver7
