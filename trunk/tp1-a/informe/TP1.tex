@@ -1,0 +1,306 @@
+\documentclass[11pt,a4paper,spanish]{article}
+\usepackage{a4wide}
+\usepackage{listings}
+\lstset{language={[x86masm]Assembler}, basicstyle=\small, numbers=left, numberstyle=\tiny}
+\usepackage[spanish, activeacute]{babel} 
+\usepackage[spanish]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmic}[1]
+\frenchspacing
+\title{
+\begin{centering}
+Universidad de Buenos Aires \\
+Facultad de Ciencias Exactas y Naturales \\
+Departamento de Ciencias de la Computaci\'on \\
+\vskip 25pt
+\bf Organizaci\'on del computador II \\
+\bf Segundo cuatrimestre 2009 
+\end{centering}
+}
+\author{
+Grupo: \textsc{POPA} \\
+\begin{tabular}[t]{|l|l|l|}
+\hline
+\textbf{Apellido y nombre} & \textbf{L.U.} & \textbf{mail} \\
+\hline 
+\hline
+Cerrutti, Mariano Javier  & 525/07 & vscorza@gmail.com \\
+\hline
+Huel, Federico Ariel  & 329/07 & federico.huel@gmail.com \\
+\hline
+Mita, Rogelio Iv\'an  & 635/07 & rogeliomita@gmail.com \\
+\hline
+\end{tabular}
+}
+\date{5 de Octubre de 2009} 
+\begin{document}
+\maketitle
+\tableofcontents
+
+\newpage
+\section{Archivos adjuntos}
+\textsc{Implementaci'on} 
+\begin{itemize}
+\item src:
+\subitem \textit{bordes.c}
+\subitem \textit{asmSobel.asm}
+\subitem \textit{asmPrewitt.asm}
+\subitem \textit{asmRoberts.asm}
+\item img:
+\subitem \textit{lena.bmp}
+\end{itemize}
+
+\textsc{Includes}
+\begin{itemize}
+\item \textit{offset.inc} 
+\item \textit{macros.mac} 
+\end{itemize}
+
+\textsc{Enunciado} 
+\begin{itemize}
+\item \textit{EnunciadoTP1A.pdf}  
+\end{itemize}
+
+\textsc{Informe} 
+\begin{itemize}
+\item \textit{tp1-a.pdf}  
+\end{itemize}
+
+\section{Instrucciones de uso}
+Decidimos escribir los c'odigos de las funciones de forma separada para mayor claridad. Utilizamos tambi'en un archivo (\textit{macros.mac}) para definir nuestras macros y  (\textit{offset.inc}) para darle nombres declarativos a los datos de la estructura imagen de opencv. En el cd adjunto al trabajo pr'actico, se encuentran todos los archivos fuente clasificados seg'un el tipo. Decidimos utilizar un makefile para compilar todos los archivos a la vez. 
+
+\newpage
+\section{Introducci'on}
+Este trabajo consisti'o en escribir en lenguaje ensamblador distintas funciones para buscar bordes de imagen, Tanto en funci'on de x, como en y, o ambas. La raz'on de escribir c'odigo en lenguaje de bajo nivel radica en que es imperativo conocer el manejo interno m'as b'asico de las instrucciones de la arquitectura del computador. \\
+\indent  Las funciones en c'odigo assembler estan divididas seg'un el operador que se desea aplicar a la imagen para buscar bordes.
+
+\section{Desarrollo}
+Antes de mostrar los c'odigos de cada funci'on explicamos algunas cuestiones generales a todos los algoritmos:
+\begin{itemize}
+\item Nos fue pedido que en todos los algoritmos sea respetada la convenci'on C, de forma que los mismos pasos (guardado de los registros edi, esi y ebx, ajuste de la pila, etc) se encuentran al principio de cada funci'on.
+\item En todas las funciones, consideramos que los par'ametros (excepto los que se ped'ian) no deb'ian ser modificados, y por lo tanto, los mismos los guardamos en variables locales o bien registros. En algunos casos esto es muy importante, por ejemplo, cuando nos pasan un puntero a una lista, si modificamos ese puntero, se pierde la direcci'on de esa lista luego de llamar a la funci'on, y esto no puede ocurrir.
+\item Tambi'en tuvimos en cuenta que las im'agenes se guardan en memoria alineadas
+\item Por cuestiones de simpleza decidimos en los algoritmos tambi'en procesar la basura de la imagen ya que la libreria opencv cuando hace el resize de la imagen se limita al ancho y alto dado como parametro, y ademas esta decici'on no cambia en absoluto la visualizaci'on de la imagen resultante.
+\end{itemize}
+
+A continuaci'on se exponen las funciones implementadas, junto con sus respectivos c'odigos en assembler y se explica a su vez los registros especiales utilizados y su funcionamiento en l'ineas generales.
+
+\subsection{macros.mac}
+Estos son las macros utilizadas en cada funcion.
+\begin{lstlisting}[frame=single]
+;========================
+; MACRO doEnter
+;========================
+; Escribe el encabezado que arma el stack frame
+; Entrada:
+;	tamanio		tamanio de memoria a reservar al entrar al proc
+;========================
+%macro doEnter 0-1 0
+	push ebp
+	mov ebp, esp
+%if %1 <> 0
+	sub esp, %1
+%endif
+	push edi
+	push esi
+	push ebx
+%endmacro
+;========================
+; MACRO doLeave
+;========================
+; Escribe la salida que restaura el stack frame previo
+; Entrada:
+;	tamanio		tamanio de memoria reservada al entrar al proc
+;	doRet		se marca en 1 si debe llamar a ret
+;========================
+%macro doLeave 0-2 0,0
+	pop ebx
+	pop esi
+	pop edi
+%if %1 <> 0
+	add esp, %1
+%endif
+	pop ebp
+%if %2 <> 0
+	ret
+%endif	
+%endmacro
+
+;========================
+; MACRO doWrite
+;========================
+; Escribe una cadena a consola
+; Entrada: 
+;	mensaje		direccion de comienzo de la cadena
+;	len		largo de la cadena a escribir
+;========================
+%macro doWrite 1
+	%%msg: db %1
+	%%len: equ $- %%msg	
+	mov eax,4			;inicializa escritura a consola
+	mov ebx,1
+	mov ecx,%%msg
+	mov edx,%%len
+	int 80h
+%endmacro
+;========================
+; MACRO doEnd
+;========================
+; Termina la ejecucion con el codigo deseado
+; Entrada: 
+;	codigo		codigo de error deseado, cero en su defecto
+;========================
+%macro doEnd 0-1 0
+	mov eax,1
+	mov ebx,%1
+	int 80h
+%endmacro
+;========================
+; MACRO doMalloc
+;========================
+; Pide la cantidad especificada de memoria
+; Entrada:
+;	cantidad	cantidad de memoria a reserver
+;========================
+%macro doMalloc 1
+	push %1
+	call malloc
+	add esp, 4
+%endmacro
+;========================
+; MACRO doRetc
+;========================
+; Retorna si se cumple la condicion especificada
+; Entrada:
+;	condicion	condicion ante la cual retornar
+;========================
+%macro  doRetc 1 
+        j%-1    %%skip 
+        ret 
+  %%skip: 
+%endmacro
+;========================
+; MACRO doWriteFile
+;========================
+; Escribe a archivo solo si esta definido el DEBUG
+; Entrada:
+;	arch		puntero al archivo
+;	msg		texto a escribir
+; Uso:
+;	doWriteFile [FHND], {"hola mundo",13,10}
+;========================
+%macro  doWriteFile 2+ 
+%ifdef DEBUG
+        jmp     %%endstr 
+  %%str:        db      %2 
+  %%endstr: 
+        mov     dx,%%str 
+        mov     cx,%%endstr-%%str 
+        mov     bx,%1 
+        mov     ah,0x40 
+        int     0x21 
+%endif
+%endmacro
+
+\end{lstlisting}
+
+\newpage
+\subsection{Recorrido de la matriz de imagen}
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta} 
+\subitem La matriz la recorrimos procesando la basura \\
+\subitem Cada pixel ocupa exactamente un byte, ya que la imagen que recive la funci'on es en escala de grises  \\
+\subitem En la arquitectura IA-32 los datos en memoria son guardados de forma \emph{little-endian}, de forma que el byte m'as significativo de un dato se encuetra en la posici'on de memoria m'as alta.
+\end{enumerate}
+
+\subsection{Funciones implementadas}
+\begin{itemize}
+\item Intentamos reducir el acceso a memoria utilizando registros para utilizar en aquellas operaciones que se encontraban dentro de los ciclos, para evitar multiples accesos a memoria. Si bien esto llev'o a tener un codigo menos entendible a simple vista, lo explicaremos en detalle.
+\end{itemize}
+
+\subsubsection{Sobel} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Lo que tuvimos en cuenta si tuvimos algo.
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{variable 1} bla.
+\subitem \textit{variable 2} bla.
+\item Registros de prop'osito general 
+\subitem \textit{eax}
+\subitem \textit{ebx}
+\subitem \textit{ecx} es el puntero a la imagen resultado.
+\subitem \textit{edx} 
+\subitem \textit{esi} es el puntero a la imagen de entrada.
+\subitem \textit{edi} 
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem ACA VA EL FUNCIONAMIENTO
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+ACA VA EL CODIGO
+\end{lstlisting}
+
+\subsubsection{Prewitt} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Lo que tuvimos en cuenta si tuvimos algo.
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{variable 1} bla.
+\subitem \textit{variable 2} bla.
+\item Registros de prop'osito general 
+\subitem \textit{eax}
+\subitem \textit{ebx}
+\subitem \textit{ecx} es el puntero a la imagen resultado.
+\subitem \textit{edx} 
+\subitem \textit{esi} es el puntero a la imagen de entrada.
+\subitem \textit{edi} 
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem ACA VA EL FUNCIONAMIENTO
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+ACA VA EL CODIGO
+\end{lstlisting}
+
+\subsubsection{Roberts} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Lo que tuvimos en cuenta si tuvimos algo.
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{variable 1} bla.
+\subitem \textit{variable 2} bla.
+\item Registros de prop'osito general 
+\subitem \textit{eax}
+\subitem \textit{ebx}
+\subitem \textit{ecx} es el puntero a la imagen resultado.
+\subitem \textit{edx} 
+\subitem \textit{esi} es el puntero a la imagen de entrada.
+\subitem \textit{edi} 
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem ACA VA EL FUNCIONAMIENTO
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+ACA VA EL CODIGO
+\end{lstlisting}
+
+\newpage
+\section{Resultados}
+COMPLETAR CON RESULTADOS
+
+\section{Conclusiones}
+Luego de implementar este trabajo en assembler, podemos concluir que si bien nos da una gran libertad a la hora de programar (modificar directamente la memoria, trabajar con los registros directamente, etc.), la claridad del c'odigo de estos programas no es tan claro como los de lenguaje de alto nivel que manejamos \textit{C}, \textit{C++}, etc. Vemos esto como una desventaja ya que teniendo en cuenta que el trabajo es grupal, en ocasiones tuvimos que repartir las tareas, es decir, algunas funciones, y luego, al juntarnos y ver las implementaciones que hab'ia hecho cada uno se dificultaba entenderlas. \\
+De todas formas, consideramos que la realizaci'on de este trabajo nos sirvi'o para obtener un importante conocimiento sobre el lenguaje de bajo nivel, el cual complementa entender cosas de lenguajes de m'as alto nivel, y consideramos adem'as que es una muy buena pr'actica para ayudarnos a comprender el funcionamiento interno de un computador.
+
+\end{document}
