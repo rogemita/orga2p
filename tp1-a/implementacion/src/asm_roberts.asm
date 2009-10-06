@@ -95,9 +95,12 @@ asmRoberts:
 
 	      sub	ax,	bx	;se la resto al pixel destino
 	      cmp	ax,	0x00FF
-	      jg	sobresaturo
+	      jle	noSobreSaturo
+	      jmp	sobresaturo
+	      noSobreSaturo:
 	      cmp	ax,	0x0000
-	      jl	subsaturo
+	      jge	volver
+	      jmp	subsaturo
 	      volver:
 	      add	[esi],	al	;mando el pixel
 	      inc	ecx

@@ -84,17 +84,9 @@ asmPrewitt:
 	add	esi,	edi		;salteo la primera linea
 	inc	esi			;salteo la primer columna
 
-	mov	eax,	0xFFFFFFFF	;meto un dato que nunca tendra dentro del ciclo para hacer un salto
-
 	cicloY6:
 	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
-
-	  cmp	eax, 0xFFFFFFFF
-	  je cicloX6
-
-	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	esi,	2
 
 	  cicloX6:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
@@ -112,9 +104,12 @@ asmPrewitt:
 	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
 	      sub	ax,	bx	;se la resto al pixel destino
 	      cmp	ax,	0x00FF
-	      jg	sobresaturo6
+	      jle	noSobreSaturo
+	      jmp	sobresaturo6
+	      noSobreSaturo:
 	      cmp	ax,	0x0000
-	      jl	subsaturo6
+	      jge	volver6
+	      jmp	subsaturo6
 	      volver6:
 
 	      add	[esi],	al	;mando el pixel
@@ -122,13 +117,18 @@ asmPrewitt:
 	      inc	esi
 	      dec edx
 	      jnz cicloX6
+
+	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
+	  add	esi,	2
 	  dec	dword T_HEIGHT
 	  jnz	cicloY6
 
 	yPrewitt:
 
 	cmp dword YORDER, 0
-	je	pintaBordes
+	jne	sigueYPrewitt
+	jmp	pintaBordes
+	sigueYPrewitt:
 	;==========================
 	; PREWITT YORDER
 	;==========================
@@ -150,9 +150,6 @@ asmPrewitt:
 	cicloY7:
 	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
-
-	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	esi,	2
 
 	  cicloX7:
 	      mov	eax,	[ecx + edi * 2]		;cargo cuatro pixeles en eax
@@ -190,6 +187,8 @@ asmPrewitt:
 	      inc	esi
 	      dec edx
 	      jnz cicloX7
+	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
+	  add	esi,	2
 	  dec	dword T_HEIGHT
 	  jnz	cicloY7
 	  
