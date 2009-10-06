@@ -83,18 +83,10 @@ asmSobel:
 	add	esi,	edi		;salteo la primera linea
 	inc	esi			;salteo la primer columna
 
-	mov	eax,	0xFFFFFFFF	;meto un dato que nunca tendra dentro del ciclo para hacer un salto
-  
 	cicloY:
 	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
 	  
-	  cmp	eax, 0xFFFFFFFF
-	  je cicloX
-	
-	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	esi,	2
-
 	  cicloX:
 	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
 	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
@@ -111,9 +103,12 @@ asmSobel:
 	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
 	      sub	ax,	bx	;se la resto al pixel destino
 	      cmp	ax,	0x00FF
-	      jg	sobresaturo
+	      jle	noSobreSatura	;estos jumps son para evitar el error de salto fuera de rango
+	      jmp	sobresaturo
+	noSobreSatura:
 	      cmp	ax,	0x0000
-	      jl	subsaturo
+	      jge	volver
+	      jmp	subsaturo
 	      volver:
 
 	      add	[esi],	al	;mando el pixel
@@ -121,13 +116,18 @@ asmSobel:
 	      inc	esi
 	      dec edx
 	      jnz cicloX
+	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
+	  add	esi,	2
+
 	  dec	dword T_HEIGHT
 	  jnz	cicloY
 
 	ySobel:
 
 	cmp dword YORDER, 0
-	je	pintaBordes
+	jne	sigueYSobel
+	jmp	pintaBordes
+	sigueYSobel:
 	;==========================
 	; SOBEL YORDER
 	;==========================
@@ -149,9 +149,6 @@ asmSobel:
 	cicloY2:
 	 mov edx, edi
 	  sub	edx,	2		;le resto los pixeles laterales
-
-	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
-	  add	esi,	2
 
 	  cicloX2:
 	      mov	eax,	[ecx + edi * 2]		;cargo cuatro pixeles en eax
@@ -189,6 +186,8 @@ asmSobel:
 	      inc	esi
 	      dec edx
 	      jnz cicloX2
+	  add	ecx,	2		;sumo dos para llevar al primero de la linea siguiente
+	  add	esi,	2
 	  dec	dword T_HEIGHT
 	  jnz	cicloY2
 
