@@ -87,6 +87,43 @@ Antes de mostrar los c'odigos de cada funci'on explicamos algunas cuestiones gen
 
 A continuaci'on se exponen las funciones implementadas, junto con sus respectivos c'odigos en assembler y se explica a su vez los registros especiales utilizados y su funcionamiento en l'ineas generales.
 
+\subsection{offset.inc}
+Aqui estan los offset a datos que usamos de la estructura imagen del openCv, para mayor claridad
+\begin{lstlisting}[frame=single]
+; typedef struct _IplImage
+; {
+;     int nSize;
+;     int ID;
+;     int nChannels;
+;     int alphaChannel;
+;     int depth;
+;     char colorModel[4];
+;     char channelSeq[4];
+;     int dataOrder;
+;     int origin;
+;     int align;
+;     int width;
+;     int height;
+;     struct _IplROI *roi;
+;     struct _IplImage *maskROI;
+;     void *imageId;
+;     struct _IplTileInfo *tileInfo;
+;     int imageSize;
+;     char *imageData;
+;     int widthStep;
+;     int BorderMode[4];
+;     int BorderConst[4];
+;     char *imageDataOrigin;
+; }
+; IplImage;
+
+%define DEPTH		16
+%define WIDTH		40
+%define HEIGHT		44
+%define IMAGE_DATA 	68
+%define WIDTH_STEP	72
+\end{lstlisting}
+
 \subsection{macros.mac}
 Estos son las macros utilizadas en cada funcion.
 \begin{lstlisting}[frame=single]
@@ -218,27 +255,44 @@ Estos son las macros utilizadas en cada funcion.
 \subsection{Funciones implementadas}
 \begin{itemize}
 \item Intentamos reducir el acceso a memoria utilizando registros para utilizar en aquellas operaciones que se encontraban dentro de los ciclos, para evitar multiples accesos a memoria. Si bien esto llev'o a tener un codigo menos entendible a simple vista, lo explicaremos en detalle.
+\item Variables locales
+\subitem \textit{SRC} Contiene el puntero a la imagen de entrada.
+\subitem \textit{DST} Contiene el puntero a la imagen resultado.
+\subitem \textit{WIDTH} Contiene el tamano de ancho de la imagen.
+\subitem \textit{HEIGHT} Contiene la altura de la imagen.
+\subitem \textit{XORDER} Variable que especifica si el calculo debe hacerse sobre la derivada X.
+\subitem \textit{YORDER} Variable que especifica si el calculo debe hacerse sobre la derivada Y.
+\subitem \textit{T\_HEIGHT} Variable que se usa como contador para el recorrido vertical.
+\item Registros de prop'osito general 
+\subitem \textit{eax} Se utiliza como acumulador, para realizar los calculos de los pixeles.
+\subitem \textit{ebx} Se utiliza como acumulador, para realizar los calculos de los pixeles.
+\subitem \textit{ecx} Se utiliza para recorrer la imagen de entrada.
+\subitem \textit{edx} Se utiliza como contador para el recorrido horizontal de la imagen.
+\subitem \textit{esi} Se utiliza para recorrer la imagen de salida.
+\subitem \textit{edi} Contiene el ancho de la imagen.
+\item \textbf{Funcionamiento}
+\subitem Lo primero que hacen todos los algoritmos es ubicar al registro ecx en el comienzo de la imagen de entrada y a esi en el primer pixel que se modificar'a en la imagen de salida.
+Luego comienza el ciclo que recorre la matriz verticalmente, para lo que carga en edx el ancho de la imagen,para usarlo como contador del recorrido horizontal, sac'andole los pixeles laterales ya que no se procesar'an debido al c'alculo.
 \end{itemize}
 
 \subsubsection{Sobel} 
 \begin{enumerate}
 \item \textbf{Cosas que tuvimos en cuenta}
 \subitem Lo que tuvimos en cuenta si tuvimos algo.
-\item \textbf{Registros y variables locales utilizadas}
-\begin{itemize}
-\item Variables locales
-\subitem \textit{variable 1} bla.
-\subitem \textit{variable 2} bla.
-\item Registros de prop'osito general 
-\subitem \textit{eax}
-\subitem \textit{ebx}
-\subitem \textit{ecx} es el puntero a la imagen resultado.
-\subitem \textit{edx} 
-\subitem \textit{esi} es el puntero a la imagen de entrada.
-\subitem \textit{edi} 
-\end{itemize}
-\item \textbf{Funcionamiento} 
-\subitem ACA VA EL FUNCIONAMIENTO
+\item \textbf{X Sobel}
+\subitem Dentro del ciclo que recorre la imagen horizontalmente, se copian en eax los cuatro pixeles que se encuentran a continuación en la imagen y mediante una máscara se obtienen sólo el primero y el tercero. Luego se hace lo mismo para los pixeles que se encuentran en la siguiente línea guardándolos en ebx, y shifteándolos un bit a izquierda para duplicar su valor. Se suman ambos registros y y se gurada el resultado en eax.
+Se cargan los pixeles de la tercer línea en ebx, se le aplica una máscara para obtener sólo los necesarios y se los suma a los acumulados quedando en eax la parte alta de eax la suman de los primeros pixeles
+de cada fila y en la parte alta los terceros. Luego, se copia  eax a ebx, y se lo shiftea (a eax)para que queden los pixeles que deben restarse en la parte menos significativa. 
+Con los datos listos, se realiza la resta.
+\item \textbf{Y Sobel}
+\subitem Dentro del ciclo que recorre la imagen horizontalmente, se cargan en eax y en ebx 4 pixeles en los que los primeros 3 contienen en orden los pixeles que serán sumados de acuerdo al c'alculo de Sobel.
+Luego se aplica una m'ascara a eax que deja solo el primer y tercer pixel y otra en ebx que deja solo el segundo. Se hace un shift a derecha a ebx para ubicar el pixel en la parte baja del registro para realizar la suma
+con los otros pixeles, pero dejando un bit a derecha para duplicar su valor. A continuaci'on se suman el primer y segundo(duplicado en valor) pixel, se shiftea el tercero y se lo suma a los dos anteriores, quedando en el
+registro ebx el valor de la suma de los pixeles.
+Luego se copian en eax los cuatro pixeles que contienen a los que deben restarse y se elimina el que no se necesita mediante la utilización de una m'ascara. Para poder operar, se utiliza la funci'on ror para dejar en la word menos significativa solo un pixel y poder restarlo llamando a ax. Luego se borra la parte baja de eax y se guarda la parte alta en ebx (La parte alta de ebx no estaba siendo utilizada ya que acumula solo la suma de tres Words). Se shiftea eax para que quede el tercer pixel en la parte baja y se lo resta al acumulador. Lo mismo se hace con el segundo pixel, pero dejando un bit a derecha al shiftearlo para que su valor sea el doble.
+\item \textbf{Ambas derivadas}
+\subitem Antes de copiarlo, se comprueba que el pixel calculado no se haya saturado, y en caso de que eso haya sucedido lo que se copia es el mayor o menor valor para el pixel, de acuerdo a la saturacion, evitando desbordes.
+Luego se restan los contadores corresopondientes y se comprueba si ha finalizado alguno de los ciclos para decidir que salto se raliza.
 \item \textbf{C'odigo}
 \end{enumerate}
 \begin{lstlisting}[frame=single]
@@ -249,21 +303,19 @@ ACA VA EL CODIGO
 \begin{enumerate}
 \item \textbf{Cosas que tuvimos en cuenta}
 \subitem Lo que tuvimos en cuenta si tuvimos algo.
-\item \textbf{Registros y variables locales utilizadas}
-\begin{itemize}
-\item Variables locales
-\subitem \textit{variable 1} bla.
-\subitem \textit{variable 2} bla.
-\item Registros de prop'osito general 
-\subitem \textit{eax}
-\subitem \textit{ebx}
-\subitem \textit{ecx} es el puntero a la imagen resultado.
-\subitem \textit{edx} 
-\subitem \textit{esi} es el puntero a la imagen de entrada.
-\subitem \textit{edi} 
-\end{itemize}
-\item \textbf{Funcionamiento} 
-\subitem ACA VA EL FUNCIONAMIENTO
+\item \textbf{X Prewitt}
+\subitem Dentro del ciclo horizontal, se copian en eax los cuatro pixeles que se encuentran a continuaci'on en la imagen y mediante una m'ascara se obtienen solo el primero y el tercero. Luego se hace
+lo mismo para los pixeles que se encuentran en la siguiente linea guard'andolos en ebx. Se suman ambos registros y y se gurada el resultado en eax.
+Se cargan los pixeles de la tercer línea en ebx, se le aplica una m'ascara para obtener solo los necesarios y se los suma a los acumulados quedando en eax la parte alta de eax la suman de los primeros pixeles
+de cada fila y en la parte alta los terceros. Luego, se copia  eax a ebx, y se lo shiftea 16 bits a derecha(a eax)para que queden los pixeles que deben restarse en la parte menos significativa. 
+Con los datos listos, se realiza la resta.
+\item \textbf{Y Prewitt}
+\subitem Dentro del ciclo que recorre la imagen horizontalmente, se cargan en eax y en ebx 4 pixeles en los que los primeros 3 contienen en orden los pixeles que ser'an sumados de acuerdo al c'alculo de Sobel.
+Luego se aplica una m'ascara a eax que deja solo el primer y tercer pixel y otra en ebx que deja solo el segundo. Se hace un shift a derecha a ebx para ubicar el pixel en la parte baja del registro para realizar la suma con los otros pixeles. A continuaci'on se suman el primer y segundo pixel, se shiftea el tercero y se lo suma a los dos anteriores, quedando en el registro ebx el valor de la suma de los pixeles.
+Luego se copian en eax los cuatro pixeles que contienen a los que deben restarse y se elimina el que no se necesita mediante la utilizaci'on de una m'ascara. Para poder operar, se utiliza la funci'on ror para dejar en la word menos significativa solo un pixel y poder restarlo llamando a ax. Luego se borra la parte baja de eax y se guarda la parte alta en ebx (La parte alta de ebx no estaba siendo utilizada ya que acumula solo la suma de tres Words). Se shiftea eax para que quede el tercer pixel en la parte baja y se lo resta al acumulador. Lo mismo se hace con el segundo pixel, pero dejando un bit a derecha al shiftearlo para que su valor sea el doble.
+\item \textbf{Ambas derivadas}
+\subitem Antes de copiarlo, se comprueba que el pixel calculado no se haya saturado, y en caso de que eso haya sucedido lo que se copia es el mayor o menor valor para el pixel, de acuerdo a la saturacion, evitando desbordes.
+Luego se restan los contadores corresopondientes y se comprueba si ha finalizado alguno de los ciclos para decidir que salto se raliza.
 \item \textbf{C'odigo}
 \end{enumerate}
 \begin{lstlisting}[frame=single]
@@ -274,21 +326,16 @@ ACA VA EL CODIGO
 \begin{enumerate}
 \item \textbf{Cosas que tuvimos en cuenta}
 \subitem Lo que tuvimos en cuenta si tuvimos algo.
-\item \textbf{Registros y variables locales utilizadas}
-\begin{itemize}
-\item Variables locales
-\subitem \textit{variable 1} bla.
-\subitem \textit{variable 2} bla.
-\item Registros de prop'osito general 
-\subitem \textit{eax}
-\subitem \textit{ebx}
-\subitem \textit{ecx} es el puntero a la imagen resultado.
-\subitem \textit{edx} 
-\subitem \textit{esi} es el puntero a la imagen de entrada.
-\subitem \textit{edi} 
-\end{itemize}
-\item \textbf{Funcionamiento} 
-\subitem ACA VA EL FUNCIONAMIENTO
+\item \textbf{X Roberts}
+\subitem Comienza el ciclo horizontal. Se cargan los tres pixeles a los que est'a apuntando ecx (que es el que recorre la imagen) y se utiliza una m'ascara para quedarse solo con el primer pixel en ax, ya que es el que se utilizar'a en el c'alculo.
+Se copian en bx los dos pixeles que se encuentran en la siguiente linea, se lo enmascara para quedarse con el m'as significativo y se lo shiftea para poder operar con el pixel guardado en ax.
+Luego se realiza la resta entre bx y ax, se verifica si hay saturaci'on y se copia el pixel guardado en al en la imagen de salida.
+\item \textbf{Y Roberts}
+\subitem En el ciclo horizontal, se copian en bx los pixeles necesarios qued'andose solo con el segundo, que es el que se utilizará. Se lo shiftea 8 bits a derecha para que quede en la parte menos significativa y que se pueda operar con otro pixel. Luego se copia el pixel que est'a en la linea siguiente en ax usando una m'ascara para filtrar el byte m'as significativo y se realiza la resta entre bx y ax. Se verifica la aparici'on de saturaci'on y se copia el pixel en lugar correspondiente de la imagen de salida.
+Se incrementa los registros que recorren las imágenes y se aumenta de línea si no deben escribirse m'as pixeles en dicha línea y vuelve a comenzar el ciclo. 
+\item \textbf{Ambas derivadas}
+\subitem Antes de copiarlo, se comprueba que el pixel calculado no se haya saturado, y en caso de que eso haya sucedido lo que se copia es el mayor o menor valor para el pixel, de acuerdo a la saturacion, evitando desbordes.
+Luego se restan los contadores corresopondientes y se comprueba si ha finalizado alguno de los ciclos para decidir que salto se raliza.
 \item \textbf{C'odigo}
 \end{enumerate}
 \begin{lstlisting}[frame=single]
