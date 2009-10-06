@@ -8,7 +8,7 @@
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
 	cvSaveImage("img/" #OPERATOR  #XDERIVATE  #YDERIVATE ".BMP", dst_asm);			\
-	printf(#OPERATOR #XDERIVATE #YDERIVATE " demoro: %i\n", tscl);
+	printf(#OPERATOR #XDERIVATE #YDERIVATIVE " demoro: %i\n", tscl);
 
 #define testOperatorNoPrint(OPERATOR, XDERIVATE, YDERIVATE)						\
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
