@@ -1,0 +1,113 @@
+;========================
+; MACRO doEnter
+;========================
+; Escribe el encabezado que arma el stack frame
+; Entrada:
+;	tamanio		tamanio de memoria a reservar al entrar al proc
+;========================
+%macro doEnter 0-1 0
+	push ebp
+	mov ebp, esp
+%if %1 <> 0
+	sub esp, %1
+%endif
+	push edi
+	push esi
+	push ebx
+%endmacro
+;========================
+; MACRO doLeave
+;========================
+; Escribe la salida que restaura el stack frame previo
+; Entrada:
+;	tamanio		tamanio de memoria reservada al entrar al proc
+;	doRet		se marca en 1 si debe llamar a ret
+;========================
+%macro doLeave 0-2 0,0
+	pop ebx
+	pop esi
+	pop edi
+%if %1 <> 0
+	add esp, %1
+%endif
+	pop ebp
+%if %2 <> 0
+	ret
+%endif	
+%endmacro
+
+;========================
+; MACRO doWrite
+;========================
+; Escribe una cadena a consola
+; Entrada: 
+;	mensaje		direccion de comienzo de la cadena
+;	len		largo de la cadena a escribir
+;========================
+%macro doWrite 1
+	%%msg: db %1
+	%%len: equ $- %%msg	
+	mov eax,4			;inicializa escritura a consola
+	mov ebx,1
+	mov ecx,%%msg
+	mov edx,%%len
+	int 80h
+%endmacro
+;========================
+; MACRO doEnd
+;========================
+; Termina la ejecucion con el codigo deseado
+; Entrada: 
+;	codigo		codigo de error deseado, cero en su defecto
+;========================
+%macro doEnd 0-1 0
+	mov eax,1
+	mov ebx,%1
+	int 80h
+%endmacro
+;========================
+; MACRO doMalloc
+;========================
+; Pide la cantidad especificada de memoria
+; Entrada:
+;	cantidad	cantidad de memoria a reserver
+;========================
+%macro doMalloc 1
+	push %1
+	call malloc
+	add esp, 4
+%endmacro
+;========================
+; MACRO doRetc
+;========================
+; Retorna si se cumple la condicion especificada
+; Entrada:
+;	condicion	condicion ante la cual retornar
+;========================
+%macro  doRetc 1 
+        j%-1    %%skip 
+        ret 
+  %%skip: 
+%endmacro
+;========================
+; MACRO doWriteFile
+;========================
+; Escribe a archivo solo si esta definido el DEBUG
+; Entrada:
+;	arch		puntero al archivo
+;	msg		texto a escribir
+; Uso:
+;	doWriteFile [FHND], {"hola mundo",13,10}
+;========================
+%macro  doWriteFile 2+ 
+%ifdef DEBUG
+        jmp     %%endstr 
+  %%str:        db      %2 
+  %%endstr: 
+        mov     dx,%%str 
+        mov     cx,%%endstr-%%str 
+        mov     bx,%1 
+        mov     ah,0x40 
+        int     0x21 
+%endif
+%endmacro

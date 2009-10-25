@@ -10,26 +10,53 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 
+%macro procedimiento 3
+	movq	mm0, [edi + eax*%3]	; traigo los pixeles
+	movq	mm3, mm0	; salvo lo que traje en mm3 y mm4
+	movq	mm4, mm0
+	pxor	mm1, mm1	; pongo en ceros mm1 y mm2
+	pxor	mm2, mm2
+	punpcklbw mm0, mm1	; tranformo a word los pixeles de la parte baja y guardo en mm0
+	punpckhbw mm3, mm2	; tranformo a word los pixeles de la parte alta y guardo en mm3
+
+	movq	mm5, [%1]	; cargo la primer mascara, la positiva
+	pmullw	mm0, mm5	; multiplico la parte baja por la mascara
+	pmullw	mm3, mm5	; multiplico la parte alta por la mascara
+				; y en ambos me quedo con solo la parte baja
+
+	packuswb mm0, mm3	; paso las words a bytes como antes y guardo en mm0
+	movq	mm5, mm0	; guardo el resultado parcial en mm5
+	;;;;;;;;;;;;;;;;
+	movq	mm0, mm4	; recupero mis pixeles como estaban y los guardo en mm0
+	movq	mm3, mm4	; tambien los guardo en mm3
+	pxor	mm1, mm1	; pongo en ceros mm1, mm2
+	pxor	mm2, mm2
+	punpcklbw mm0, mm1	; transformo como antes a words la parte baja y alta
+	punpckhbw mm3, mm2
+
+	movq	mm4, [%2]	; cargo la mascara negativa en mm4
+	pmullw	mm0, mm4	; multiplico con words signadas la parte baja
+	pmullw	mm3, mm4	; multiplico con words signadas la parte alta
+
+	packsswb mm0, mm3	; vuelvo a bytes words signadas y ademas saturo
+	psllq	mm0, 16		; los ultimos 2 bytes quedan sin procesar
+	
+	paddsb	mm5, mm0	; sumo bytes signados con saturacion
+	paddsb	mm6, mm5	; sumo bytes signados al resultado parcial del operador
+%endmacro
+
 global asmSobel
 
 section .data
-menos_unos:	dd 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
-menos_dos:	db -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2
-dos:	db 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-
-mask: dd 0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
-mask1: dd 0xffff0000, 0x00000000, 0x00000000, 0x00000000
-mask2: dd 0x0000ffff, 0x00000000, 0x00000000, 0x00000000
-mask3: dd 0xffffffff, 0x00000000, 0x00000000, 0x00000000
-
-a: db 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+unos:		dw 1, 1, 1, 1
+menos_unos:	dw -1, -1, -1, -1
+menos_dos:	dw -2, -2, -2, -2
+dos:		dw 2, 2, 2, 2
 
 section .text
 
 asmSobel:
 	doEnter
-
-	
 
 sigue:
 	mov	edi, SRC
@@ -37,109 +64,38 @@ sigue:
 
 	mov	esi, DST
 	mov	esi, [esi + IMAGE_DATA]
-
+	
 	mov	ebx, HEIGHT
-	sub 	ebx, 2
+	sub	ebx, 2
 	mov	edx, WIDTH
 	mov	eax, edx
-	sar	edx, 3
+	;sar	edx, 3
+	mov	ecx, 80
+	inc	ecx
+	mov	edx, ecx
 ; 	sar	edx, 4
-	mov	ecx, edx
-	movdqu	xmm0, [edi]
-	movdqu	xmm1, xmm0
-	psllq	xmm1, 2
-	pxor	xmm6, xmm6
+	;mov	ecx, edx
+
+	lea	esi, [esi + eax +1]
 
 ciclo_x:
-	movdqu	xmm0, [edi + eax]
-	pxor	xmm1, xmm1
-	pxor	xmm2, xmm2
-	punpcklbw xmm1, xmm0
-	punpckhbw xmm2, xmm0
-	pslldq	xmm0, 2
-	pxor	xmm3, xmm3
-	pxor	xmm4, xmm4
-	punpcklbw xmm3, xmm0
-	punpckhbw xmm4, xmm0
+ 	pxor	mm6, mm6
+	procedimiento unos, menos_unos, 0
+	procedimiento dos, menos_dos, 1
+	procedimiento unos, menos_unos, 2
 
-	movdqu	xmm5, [dos]
-	movdqu	xmm0, [menos_dos]
-
-	pmullw	xmm1, xmm5
-	pmullw	xmm2, xmm5
-	pmullw	xmm3, xmm0
-	pmullw	xmm4, xmm0
-
-	packuswb xmm1, xmm2
-	packsswb xmm3, xmm4
-	paddsb	xmm1, xmm3
-	paddsb	xmm6, xmm1	;-> segunda fila hecha en xmm6
-
-	;;;;;;;;;;;;;;;;;;
-
-	movdqu	xmm0, [edi]
-	pxor	xmm1, xmm1
-	pxor	xmm2, xmm2
-	punpcklbw xmm1, xmm0
-	punpckhbw xmm2, xmm0
-	pslldq	xmm0, 2
-	pxor	xmm3, xmm3
-	pxor	xmm4, xmm4
-	punpcklbw xmm3, xmm0
-	punpckhbw xmm4, xmm0
-
-	movdqu	xmm5, [dos]
-	movdqu	xmm0, [menos_dos]
-
-	pmullw	xmm1, xmm5
-	pmullw	xmm2, xmm5
-	pmullw	xmm3, xmm0
-	pmullw	xmm4, xmm0
-
-	packuswb xmm1, xmm2
-	packsswb xmm3, xmm4
-	paddsb	xmm1, xmm3
-	paddsb	xmm6, xmm1	;-> primer fila hecha en xmm6
-
-	;;;;;;;;;;;;;;;;;;
-
-	movdqu	xmm0, [edi + eax*2]
-	pxor	xmm1, xmm1
-	pxor	xmm2, xmm2
-	punpcklbw xmm1, xmm0
-	punpckhbw xmm2, xmm0
-	pslldq	xmm0, 2
-	pxor	xmm3, xmm3
-	pxor	xmm4, xmm4
-	punpcklbw xmm3, xmm0
-	punpckhbw xmm4, xmm0
-
-	movdqu	xmm5, [dos]
-	movdqu	xmm0, [menos_dos]
-
-	pmullw	xmm1, xmm5
-	pmullw	xmm2, xmm5
-	pmullw	xmm3, xmm0
-	pmullw	xmm4, xmm0
-
-	packuswb xmm1, xmm2
-	packsswb xmm3, xmm4
-	paddsb	xmm1, xmm3
-	paddsb	xmm6, xmm1	;-> tercer fila hecha en xmm6
-	
-	;;;;;;;;;;;;;;;;;;
-
-	movdqu	[esi], xmm6
-; 	add	edi, 16
-; 	add	esi, 16
+	movq	[esi], mm6
 	add	edi, 6
 	add	esi, 6
+	dec	ecx
 	cmp	ecx, 0
 	je	ciclo_y
 	jmp	ciclo_x
 ciclo_y:
 	mov	ecx, edx
 	dec	ebx
+	sub	edi, 2
+	sub	esi, 2
 	cmp	ebx, 0
 	jne ciclo_x
 
