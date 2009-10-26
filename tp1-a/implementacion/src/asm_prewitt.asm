@@ -181,7 +181,7 @@ asmPrewitt:
 	      jl	subsaturo7
 	      volver7:
 
-	      add	[esi],	bl	;mando el pixel
+	      or	[esi],	bl	;mando el pixel
 	      noPintar7:
 	      inc	ecx
 	      inc	esi
