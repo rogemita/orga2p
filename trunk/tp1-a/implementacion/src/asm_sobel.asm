@@ -180,7 +180,10 @@ asmSobel:
 	      jl	subsaturo2
 	      volver2:
 
-	      add	[esi],	bl	;mando el pixel
+	      or	[esi],	bl	;mando el pixel
+	      ;cmp	byte [esi], 0
+	      ;jge noPintar2
+	      ;mov	byte [esi],	0xFF
 	      noPintar2:
 	      inc	ecx
 	      inc	esi

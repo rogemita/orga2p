@@ -16,8 +16,7 @@
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
 	cvSaveImage("img/" #OPERATOR  #XDERIVATE  #YDERIVATE ".BMP", dst_asm);			
 
-#define	CORRIDAS	100
-
+#define	CORRIDAS	2
 extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmPrewitt(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmSobel(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
