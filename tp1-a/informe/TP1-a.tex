@@ -309,8 +309,8 @@ Luego comienza el ciclo que recorre la matriz por filas, para lo que carga en \v
 \end{itemize}
 
 \subsubsection{Sobel}
-\begin{enumerate}
 Presentaremos la el c'odigo de la funci'on completa de sobel para ver el funcionamiento en totalidad y en el resto de los operadores se har'a mencion solo al fragmento de codigo que realiza las operaciones importantes:
+\begin{enumerate}
 \item \textbf{X Sobel}
 \subitem Dentro del ciclo que recorre la imagen horizontalmente, se copian en \verb'eax' los cuatro pixeles que se encuentran a continuaci'on en la imagen y mediante una m'ascara se obtienen s'olo el primero y el tercero. Luego se hace lo mismo para los pixeles que se encuentran en la siguiente l'inea guard'andolos en \verb'ebx', y desplaz'andolos un bit a izquierda para duplicar su valor. Se suman ambos registros y y se guarda el resultado en \verb'eax'.\\
 Se cargan los pixeles de la tercer l'inea en \verb'ebx', se le aplica una m'ascara para obtener s'olo los necesarios y se los suma a los acumulados quedando en la parte alta de \verb'eax' la suma de los p'ixeles de la primera fila y en la parte alta la de los p'ixeles de la tercera fila. Luego, se copia  \verb'eax' a \verb'ebx', y se desplaza a \verb'eax' para que queden los p'ixeles que deben restarse en la parte menos significativa. 
@@ -319,11 +319,12 @@ Con los datos listos, se realiza la resta ($ax \leftarrow ax - bx$). Aqui se pre
 \subitem Dentro del ciclo que recorre la imagen horizontalmente, se cargan en \verb'eax' y en \verb'ebx' cuatro p'ixeles en los que los primeros tres contienen los p'ixeles en el orden que ser'an sumados de acuerdo al c'alculo de \verb'Sobel'.\\
 Luego se aplica una m'ascara a \verb'eax' que deja s'olo el primer y tercer pixel y otra en \verb'ebx' que deja solo el segundo. Se hace un desplazamiento a derecha a \verb'ebx' para ubicar el pixel en la parte baja del registro y luego realizar la suma con la parte baja de \verb'eax' i.e. el segundo y el tercer pixel, dejando un bit a derecha del segundo pixel para duplicar su valor (seg'un indican los coeficientes del operador). A continuaci'on se suman el primer y segundo pixel (duplicado en valor), se desplaza el tercero y se lo suma a los dos anteriores, quedando en el registro \verb'ebx' el valor de la suma de los p'ixeles de la primer fila.\\
 Luego se copian en \verb'eax' los cuatro p'ixeles que contienen a los que deben restarse y se elimina el que no se necesita mediante la utilizaci'on de una m'ascara como se hiciera para la primera fila. Para poder operar, se utiliza la funci'on \verb'ror' que deja en la palabra menos significativa s'olo un pixel y poder restarlo llamando a \verb'ax'. Luego se borra la parte baja de \verb'eax' y se guarda la parte alta en \verb'ebx' (La parte alta de \verb'ebx' no estaba siendo utilizada ya que acumula solo la suma de tres Words). Se desplaza \verb'eax' para que quede el tercer pixel en la parte baja y se lo resta al acumulador. Lo mismo se hace con el segundo pixel, pero dejando un bit a derecha al desplazarlo para que su valor sea el doble.
-\item \textbf{En todos los caso}
+\item \textbf{En todos los casos}
 \subitem Antes de copiarlo, se comprueba que el pixel calculado no se haya saturado, y en caso de que eso haya sucedido lo que se copia es el mayor o menor valor para el pixel dentro del rango de \verb'byte', de acuerdo a la saturacion, evitando desbordes.\\
 Luego se restan los contadores corresopondientes y se comprueba si ha finalizado alguno de los ciclos para decidir que salto se realiza.
 \begin{lstlisting}[frame=single]
-;void asmSobel(const char* src, char* dst, int ancho, int alto, int xorder, int yorder)
+;void asmSobel(const char* src, char* dst
+, int ancho, int alto, int xorder, int yorder)
 
 %include "include/defines.inc"
 %include "include/offset.inc"
@@ -366,10 +367,12 @@ asmSobel:
 	mov	edx,	SRC
 	mov	edi,	[edx + WIDTH_STEP]
 	
-	mov	ecx,	SRC	;ecx registro para el pixel de origen
+	;ecx registro para el pixel de origen
+	mov	ecx,	SRC	
 	mov	ecx,	[ecx + IMAGE_DATA]
 
-	mov	esi,	DST	;esi registro para el pixel de destino
+	;esi registro para el pixel de destino
+	mov	esi,	DST	
 	mov	esi,	[esi + IMAGE_DATA]
 
 	;=============================
@@ -379,7 +382,8 @@ asmSobel:
 	cicloYcls:
 	 mov edx, edi
 	  cicloXcls:
-	      mov	dword [esi],	0	;mando el pixel
+	      ;mando el pixel
+	      mov	dword [esi],	0	
 	      inc	ecx
 	      inc	esi
 	      dec edx
@@ -397,36 +401,51 @@ asmSobel:
 	mov eax, HEIGHT
 	mov dword T_HEIGHT, eax
 
-	mov	ecx,	SRC		;ecx registro para el pixel de origen
+	;ecx registro para el pixel de origen
+	mov	ecx,	SRC		
 	mov	ecx,	[ecx + IMAGE_DATA]
 
-	mov	esi,	DST		;esi registro para el pixel de destino
+	;esi registro para el pixel de destino
+	mov	esi,	DST		
 	mov	esi,	[esi + IMAGE_DATA]
 
-	add	esi,	edi		;salteo la primera linea
-	inc	esi			;salteo la primer columna
+	;salteo la primera linea
+	add	esi,	edi		
+	;salteo la primer columna
+	inc	esi			
 
 	cicloY:
 	 mov edx, edi
-	  sub	edx,	2		;le resto los pixeles laterales
+	  ;le resto los pixeles laterales
+	  sub	edx,	2		
 	  
 	  cicloX:
-	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
-	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
-	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
-	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
-	      shl	ebx,1	;desplazo siete bits a derecha para permitir 
-				;operaciones en 8 bits
+	      ;cargo cuatro pixeles en eax
+	      mov	eax,	[ecx]	
+	      ;paso a dos words empaquetadas
+	      and	eax,	0x00FF00FF	
+	      ;sumo dos veces la segunda linea
+	      mov	ebx,	[ecx + edi]	
+	      ;paso a dos words empaquetadas
+	      and	ebx,	0x00FF00FF	
+	      ;desplazo siete bits a derecha para permitir 
+	      ;operaciones en 8 bits
+	      shl	ebx,1	
 	      add	eax,	ebx
-	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
-	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
+	      ;sumo la tercera linea
+	      mov	ebx,	[ecx + edi * 2]	
+	      ;paso a dos words empaquetadas
+	      and	ebx,	0x00FF00FF	
 	      add	eax,	ebx
 	      mov	ebx,	eax
-	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
-	      sub	ax,	bx	;se la resto al pixel destino
+	      ;muevo eax a la parte izquierda de la matriz
+	      shr	eax,	16	
+	      ;se la resto al pixel destino
+	      sub	ax,	bx	
 	      cmp	ax,	0x00FF
-	      jle	noSobreSatura	;estos jumps son para evitar el error
-					;de salto fuera de rango
+	      ;estos jumps son para evitar el error
+	      ;de salto fuera de rango
+	      jle	noSobreSatura	
 	      jmp	sobresaturo
 	noSobreSatura:
 	      cmp	ax,	0x0000
@@ -439,7 +458,8 @@ asmSobel:
 	      inc	esi
 	      dec edx
 	      jnz cicloX
-	  add	ecx,	2	;sumo dos para llevar al primero de la linea siguiente
+	  ;sumo dos para llevar al primero de la linea siguiente
+	  add	ecx,	2	
 	  add	esi,	2
 
 	  dec	dword T_HEIGHT
@@ -460,65 +480,90 @@ asmSobel:
 	mov	edx,	SRC
 	mov	edi,	[edx + WIDTH_STEP]
 	
-	mov	ecx,	SRC		;ecx registro para el pixel de origen
+	;ecx registro para el pixel de origen
+	mov	ecx,	SRC		
 	mov	ecx,	[ecx + IMAGE_DATA]
 
-	mov	esi,	DST		;esi registro para el pixel de destino
+	;esi registro para el pixel de destino
+	mov	esi,	DST		
 	mov	esi,	[esi + IMAGE_DATA]
 
-	add	esi,	edi		;salteo la primera linea
-	inc	esi			;salteo la primer columna
+	;salteo la primera linea
+	add	esi,	edi		
+	;salteo la primer columna
+	inc	esi			
 
 	cicloY2:
 	 mov edx, edi
-	  sub	edx,	2		;le resto los pixeles laterales
+	  ;le resto los pixeles laterales
+	  sub	edx,	2		
 
 	  cicloX2:
-	      mov	eax,	[ecx + edi * 2]		;cargo cuatro pixeles en eax
-	      mov	ebx,	eax		;copio a ebx
-	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
-	      and	ebx,	0x0000FF00	;hago lo mismo con el pixel del medio
+	      ;cargo cuatro pixeles en eax
+	      mov	eax,	[ecx + edi * 2]	
+	      ;copio a ebx	
+	      mov	ebx,	eax		
+	      ;paso a dos words empaquetadas
+	      and	eax,	0x00FF00FF	
+	      ;hago lo mismo con el pixel del medio
+	      and	ebx,	0x0000FF00	
 	      shr	ebx,	7
-	      add	bx,	ax		;acumulo el primero con el segundo
+	      ;acumulo el primero con el segundo
+	      add	bx,	ax		
 	      and	ebx,	0x0000FFFF
 	      shr	eax,	16
-	      add	bx,	ax		;ya acumulamos los primeros en bx
+	      ;ya acumulamos los primeros en bx
+	      add	bx,	ax		
 
-	      mov	eax,	[ecx]	;cargo la tercera linea
+	      ;cargo la tercera linea
+	      mov	eax,	[ecx]	
 	      and	eax,	0x00FFFFFF
-	      ror	eax,	16		;paso la parte izq a der i.e. me queda el primer
-						; pixel en ax en una word
-	      sub	bx,	ax		;resto el primer pixel
-	      xor	ax,	ax		;borro la parte baja me quedan los otros dos arriba
-	      or	ebx,	eax		;paso la parte alta de eax a ebx 
-						;como contenedor temporal queda: px2 px3 \ acum
-	      shr	eax,	16		;bajo los dos pixeles altos
-	      and	eax,	0x000000FF	;me quedo con el tercer pixel
-	      sub	bx,	ax		;resto el tercer pixel
-	      mov	eax,	ebx		;voy a recuperar el segundo pixel
+	      ;paso la parte izq a der i.e. me queda el primer
+	      ror	eax,	16		
+	      ; pixel en ax en una word
+	      ;resto el primer pixel
+	      sub	bx,	ax		
+	      ;borro la parte baja me quedan los otros dos arriba
+	      xor	ax,	ax		
+	      ;paso la parte alta de eax a ebx 
+	      or	ebx,	eax
+	      ;como contenedor temporal queda: px2 px3 \ acum
+	      ;bajo los dos pixeles altos
+	      shr	eax,	16		
+	      ;me quedo con el tercer pixel
+	      and	eax,	0x000000FF	
+	      ;resto el tercer pixel
+	      sub	bx,	ax		
+	      ;voy a recuperar el segundo pixel
+	      mov	eax,	ebx		
 	      and	eax,	0xFF000000
-	      shr	eax,	23		;lo paso a derecha multiplicado por dos
-	      sub	bx,	ax		;resto el segundo pixel
+	      ;lo paso a derecha multiplicado por dos
+	      shr	eax,	23		
+	      ;resto el segundo pixel
+	      sub	bx,	ax		
 	      cmp	bx,	0x00FF
 	      jg	sobresaturo2
 	      cmp	bx,	0x0000
 	      jl	subsaturo2
 	      volver2:
 
-	      or	[esi],	bl	;mando el pixel
+	      ;mando el pixel
+	      or	[esi],	bl	
 	      noPintar2:
 	      inc	ecx
 	      inc	esi
 	      dec edx
 	      jnz cicloX2
-	  add	ecx,	2	;sumo dos para llevar al primero de la linea siguiente
+	  ;sumo dos para llevar al primero de la linea siguiente
+	  add	ecx,	2	
 	  add	esi,	2
 	  dec	dword T_HEIGHT
 	  jnz	cicloY2
 
 
 	pintaBordes:
-	mov esi, DST		;esi registro para el pixel de destino
+	;esi registro para el pixel de destino
+	mov esi, DST		
 	mov esi, [esi + IMAGE_DATA]
 
 	; pinta las columnas primera y ultima
@@ -558,6 +603,7 @@ asmSobel:
 	      mov	ebx,	0
 	      jmp	volver2
 \end{lstlisting}
+\end{enumerate}
 
 \subsubsection{Prewitt} 
 \begin{enumerate}
@@ -566,17 +612,25 @@ asmSobel:
 Se cargan los pixeles de la tercer l'inea en \verb'ebx', se le aplica una m'ascara para obtener solo los necesarios y se los suma a los acumulados quedando en la parte alta de \verb'eax' la suma de los primeros pixeles de cada fila y en la parte baja los terceros. Luego, se copia  \verb'eax' a \verb'ebx', y se lo desplaza \verb'eax' 16 bits a derecha para que queden los pixeles que deben restarse en la parte menos significativa.
 Con los datos listos, se realiza la resta. Aqui se presenta el fragmento de codigo que realiza esto:
 \begin{lstlisting}[frame=single]
-	      mov	eax,	[ecx]	;cargo cuatro pixeles en eax
-	      and	eax,	0x00FF00FF	;paso a dos words empaquetadas
-	      mov	ebx,	[ecx + edi]	;sumo dos veces la segunda linea
-	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
+	      ;cargo cuatro pixeles en eax
+	      mov	eax,	[ecx]	
+	      ;paso a dos words empaquetadas
+	      and	eax,	0x00FF00FF	
+	      ;sumo dos veces la segunda linea
+	      mov	ebx,	[ecx + edi]	
+	      ;paso a dos words empaquetadas
+	      and	ebx,	0x00FF00FF	
 	      add	eax,	ebx
-	      mov	ebx,	[ecx + edi * 2]	;sumo la tercera linea
-	      and	ebx,	0x00FF00FF	;paso a dos words empaquetadas
+	      ;sumo la tercera linea
+	      mov	ebx,	[ecx + edi * 2]	
+	      ;paso a dos words empaquetadas
+	      and	ebx,	0x00FF00FF	
 	      add	eax,	ebx
 	      mov	ebx,	eax
-	      shr	eax,	16	;muevo eax a la parte izquierda de la matriz
-	      sub	ax,	bx	;se la resto al pixel destino
+	      ;muevo eax a la parte izquierda de la matriz
+	      shr	eax,	16	
+	      ;se la resto al pixel destino
+	      sub	ax,	bx	
 	      cmp	ax,	0x00FF
 	      jle	noSobreSaturo
 	      jmp	sobresaturo6
@@ -601,31 +655,48 @@ Con los datos listos, se realiza la resta. Aqui se presenta el fragmento de codi
 Luego se aplica una m'ascara a \verb'eax' que deja s'olo el primer y tercer pixel, y otra en \verb'ebx' que deja s'olo el segundo. Se hace un desplazamiento a derecha a \verb'ebx' para ubicar el pixel en la parte baja del registro para realizar la suma con los otros pixeles. A continuaci'on se suman el primer y segundo pixel, se deslplaza el tercero y se lo suma a los dos anteriores, quedando en el registro \verb'ebx' el valor de la suma de los pixeles.
 Luego se copian en \verb'eax' los cuatro pixeles que contienen a los que deben restarse y se elimina el que no se necesita mediante la utilizaci'on de una m'ascara. Para poder operar, se utiliza la funci'on \verb'ror' para dejar en la palabra menos significativa solo un pixel y poder restarlo llamando a \verb'ax'. Luego se borra la parte baja de \verb'eax' y se guarda la parte alta en \verb'ebx' (La parte alta de \verb'ebx' no estaba siendo utilizada ya que acumula s'olo la suma de tres Words). Se desplaza \verb'eax' para que quede el tercer pixel en la parte baja y se lo resta al acumulador. Lo mismo se hace con el segundo pixel. Aqui se presenta el fragmento de codigo que realiza esto:
 \begin{lstlisting}[frame=single]
-	mov	eax,	[ecx + edi * 2]	;cargo cuatro pixeles en eax
-	mov	ebx,	eax		;copio a ebx
-	and	eax,	0x00FF00FF	;paso a dos words empaquetadas
-	and	ebx,	0x0000FF00	;hago lo mismo con el pixel del medio
+	;cargo cuatro pixeles en eax
+	mov	eax,	[ecx + edi * 2]	
+	;copio a ebx
+	mov	ebx,	eax		
+	;paso a dos words empaquetadas
+	and	eax,	0x00FF00FF	
+	;hago lo mismo con el pixel del medio
+	and	ebx,	0x0000FF00	
 	shr	ebx,	8
-	add	bx,	ax		;acumulo el primero con el segundo
+	;acumulo el primero con el segundo
+	add	bx,	ax		
 	and	ebx,	0x0000FFFF
 	shr	eax,	16
-	add	bx,	ax		;ya acumulamos los primeros en bx
+	;ya acumulamos los primeros en bx
+	add	bx,	ax		
 	
-	mov	eax,	[ecx]	;cargo la tercera linea
+	;cargo la tercera linea
+	mov	eax,	[ecx]	
 	and	eax,	0x00FFFFFF
-	ror	eax,	16		;paso la parte izq a der i.e. me 
-					;queda el primer pixel en ax en una word
-	sub	bx,	ax		;resto el primer pixel
-	xor	ax,	ax		;borro la parte baja me quedan los otros dos arriba
-	or	ebx,	eax		;paso la parte alta de eax a ebx como contenedor 
-					;temporal queda: px2 px3 \ acum
-	shr	eax,	16		;bajo los dos pixeles altos
-	and	eax,	0x000000FF	;me quedo con el tercer pixel
-	sub	bx,	ax		;resto el tercer pixel
-	mov	eax,	ebx		;voy a recuperar el segundo pixel
+	;paso la parte izq a der i.e. me 
+	;queda el primer pixel en ax en una word
+	ror	eax,	16		
+	;resto el primer pixel
+	sub	bx,	ax		
+	;borro la parte baja me quedan los otros dos arriba
+	xor	ax,	ax		
+	;paso la parte alta de eax a ebx como contenedor 
+	;temporal queda: px2 px3 \ acum
+	or	ebx,	eax		
+	;bajo los dos pixeles altos
+	shr	eax,	16		
+	;me quedo con el tercer pixel
+	and	eax,	0x000000FF	
+	;resto el tercer pixel
+	sub	bx,	ax		
+	;voy a recuperar el segundo pixel
+	mov	eax,	ebx		
 	and	eax,	0xFF000000
-	shr	eax,	24		;lo paso a derecha multiplicado por dos
-	sub	bx,	ax		;resto el segundo pixel
+	;lo paso a derecha multiplicado por dos
+	shr	eax,	24		
+	;resto el segundo pixel
+	sub	bx,	ax		
 	cmp	bx,	0x00FF
 	jg	sobresaturo7
 	cmp	bx,	0x0000
@@ -653,14 +724,17 @@ Luego se restan los contadores corresopondientes y se comprueba si ha finalizado
 Se copian en \verb'bx' los dos pixeles que se encuentran en la siguiente linea, se lo enmascara para quedarse con el m'as significativo y se lo desplaza para poder operar con el pixel guardado en \verb'ax'.
 Luego se realiza la resta entre \verb'bx' y \verb'ax', se verifica si hay saturaci'on y se copia el pixel guardado en al en la imagen de salida. Aqui se presenta el fragmento de codigo que realiza esto:
 \begin{lstlisting}[frame=single]
-	mov	ax,	[ecx]		;cargo 4 pixeles en eax
+	;cargo 4 pixeles en eax
+	mov	ax,	[ecx]		
 	and	ax,	0x00FF
+	;sumo dos veces la segunda linea	
+	mov	bx,	[ecx + edi]	
+	;desplazo 8 bits a derecha para permitir
+	;operaciones en 8 bits
+	shr	bx,	8	
 	
-	mov	bx,	[ecx + edi]	;sumo dos veces la segunda linea
-	shr	bx,	8	;desplazo 8 bits a derecha para permitir
-				;operaciones en 8 bits
-	
-	sub	ax,	bx		;se la resto al pixel destino
+	;se la resto al pixel destino
+	sub	ax,	bx		
 	cmp	ax,	0x00FF
 	jle	noSobreSaturo
 	jmp	sobresaturo
@@ -682,13 +756,18 @@ Luego se realiza la resta entre \verb'bx' y \verb'ax', se verifica si hay satura
 \subitem En el ciclo horizontal, se copian en \verb'bx' los pixeles necesarios qued'andose solo con el segundo, que es el que se utilizar'a. Se lo desplaza 8 bits a derecha para que quede en la parte menos significativa y que se pueda operar con otro pixel. Luego se copia el pixel que est'a en la linea siguiente en \verb'ax' usando una m'ascara para filtrar el byte m'as significativo y se realiza la resta entre \verb'bx' y \verb'ax'. Se verifica la aparici'on de saturaci'on y se copia el pixel en lugar correspondiente de la imagen de salida.
 Se incrementa los registros que recorren las im'agenes y se aumenta de l'inea si no deben escribirse m'as pixeles en dicha l'inea y vuelve a comenzar el ciclo. Aqui se presenta el fragmento de codigo que realiza esto:
 \begin{lstlisting}[frame=single]
-	mov	bx,	[ecx]		;cargo la primera linea
-		shr	bx, 8		;lo llevo a la parte menos significativa
+	;cargo la primera linea
+	mov	bx,	[ecx]		
+	;lo llevo a la parte menos significativa
+	shr	bx, 8		
+
+	;cargo un pixel en eax		
+	mov	ax,	[ecx + edi]	
+	;paso a dos words empaquetadas
+	and	ax,	0x00FF		
 		
-	mov	ax,	[ecx + edi]	;cargo un pixel en eax
-	and	ax,	0x00FF		;paso a dos words empaquetadas
-		
-	sub	bx,	ax		;resto el  pixel
+	;resto el  pixel
+	sub	bx,	ax		
 	cmp	bx,	0x00FF
 	jg	sobresaturo2
 	cmp	bx,	0x0000
@@ -706,7 +785,7 @@ Se incrementa los registros que recorren las im'agenes y se aumenta de l'inea si
 \item \textbf{En todo caso}
 \subitem Antes de copiarlo, se comprueba que el pixel calculado no se haya saturado, y en caso de que eso haya sucedido lo que se copia es el mayor o menor valor para el pixel, de acuerdo a la saturacion, evitando desbordes.
 Luego se restan los contadores corresopondientes y se comprueba si ha finalizado alguno de los ciclos para decidir que salto se realiza.
-\item \textbf{C'odigo}
+%\item \textbf{C'odigo}
 \end{enumerate}
 
 
