@@ -10,118 +10,146 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 
-%macro procedimiento 2-3 0
-	movq	mm0, [edi + eax*%3]	; traigo los pixeles
-	movq	mm3, mm0	; salvo lo que traje en mm3 y mm4
-	movq	mm4, mm0
-	pxor	mm1, mm1	; pongo en ceros mm1 y mm2
-	punpcklbw mm1, mm0	; tranformo a word los pixeles de la parte baja y guardo en mm0
-	movq	mm0, mm1
-	pxor	mm1, mm1
-	punpckhbw mm1, mm3	; tranformo a word los pixeles de la parte alta y guardo en mm3
-	movq	mm3, mm1
-	pxor	mm1, mm1
+%macro	sobelX 3
+	;**************************
+	; VOY A APLICAR EL OPERADOR
+	; EN LA PARTE BAJA
+	;**************************
+	pxor		mm6, mm6
+	pxor		mm7, mm7
+	punpcklbw	mm6, %2		;paso a word en A la segunda linea
+	psllw		mm6, 1		;multiplico por dos
+	punpcklbw	mm7, %1 	;paso a word en B la primera linea
+	paddsw		mm6, mm7	;sumo saturado
+	punpcklbw	mm7, %3		;paso a word en B la tercera linea
+	paddsw		mm6, mm7	;sumo saturado
+	movq		mm7, %2		;copio en B la segunda linea
+	psrlq		mm7, 16		;desplazo para sumar las columnas de izquierda y derecha
+	punpcklbw	mm7, mm7	;lo paso a word tomando para la parte alta los ceros
+					;que quedaron al desplazar
+	psllw		mm7, 1		;multiplico por dos
+	psubsw		mm6, mm7	;resto la primera columna
+	movq		mm7, %1		;hago lo propio con la primera linea
+	psrlq		mm7, 16
+	punpcklbw	mm7, mm7
+	psubsw		mm6, mm7
+	movq		mm7, %3		;y con la tercera linea
+	psrlq		mm7, 16
+	punpcklbw	mm7, mm7
+	psubsw		mm6, mm7
 
-	movq	mm5, [%1]	; cargo la primer mascara, la positiva
-	pmullw	mm0, mm5	; multiplico la parte baja por la mascara
-	pmullw	mm3, mm5	; multiplico la parte alta por la mascara
-				; y en ambos me quedo con solo la parte baja
-	paddsw	mm6, mm0
-	paddsw	mm7, mm3
-
-	;packuswb mm0, mm3	; paso las words a bytes como antes y guardo en mm0
-	;packsswb mm0, mm3
-	movq	mm5, mm0	; guardo el resultado parcial en mm5
-	;;;;;;;;;;;;;;;;
-	movq	mm0, mm4	; recupero mis pixeles como estaban y los guardo en mm0
-	movq	mm3, mm4	; tambien los guardo en mm3
 	
-	pxor	mm1, mm1	; pongo en ceros mm1 y mm2
-	punpcklbw mm1, mm0	; tranformo a word los pixeles de la parte baja y guardo en mm0
-	movq	mm0, mm1
-	pxor	mm1, mm1
-	punpckhbw mm1, mm3	; tranformo a word los pixeles de la parte alta y guardo en mm3
-	movq	mm3, mm1
-	pxor	mm1, mm1
+	;**************************
+	; VOY A APLICAR EL OPERADOR
+	; EN LA PARTE ALTA
+	;**************************	
+	pxor		mm6, mm6
+	pxor		mm7, mm7
+	punpckhbw	mm6, %2		;paso a word en A la segunda linea
+	psllw		mm6, 1		;multiplico por dos
+	punpckhbw	mm7, %1 	;paso a word en B la primera linea
+	paddsw		mm6, mm7	;sumo saturado
+	punpckhbw	mm7, %3		;paso a word en B la tercera linea
+	paddsw		mm6, mm7	;sumo saturado
+	movq		mm7, %2		;copio en B la segunda linea
+	psrlq		mm7, 80		;desplazo para sumar las columnas de izquierda y derecha
+	punpcklbw	mm7, mm7	;lo paso a word tomando para la parte alta los ceros
+					;que quedaron al desplazar
+	psllw		mm7, 1		;multiplico por dos
+	psubsw		mm6, mm7	;resto la primera columna
+	movq		mm7, %1		;hago lo propio con la primera linea
+	psrlq		mm7, 80
+	punpcklbw	mm7, mm7
+	psubsw		mm6, mm7
+	movq		mm7, %3		;y con la tercera linea
+	psrlq		mm7, 80
+	punpcklbw	mm7, mm7
+	psubsw		mm6, mm7	
 
-	movq	mm4, [%2]	; cargo la mascara negativa en mm4
-	pmullw	mm0, mm4	; multiplico con words signadas la parte baja
-	pmullw	mm3, mm4	; multiplico con words signadas la parte alta
+	;************************
+	; TERMINE COPIO A DESTINO
+	;************************
+	pxor		mm7, mm7
+	packsswb	mm6, mm7
+	movq		[eax], mm6	;copio los 8 bytes al destino de los cuales 6 son validos
+	add		eax, edx	;salto la linea siguiente
 
-	paddsw	mm6, mm0
-	paddsw	mm7, mm3
-
- 	;packsswb mm0, mm3	; vuelvo a bytes words signadas y ademas saturo
-
-	;psllq	mm0, 16		; los ultimos 2 bytes quedan sin procesar
-	
-	;paddsw	mm5, mm0	; sumo bytes signados con saturacion
-	;paddsw	mm6, mm5	; sumo bytes signados al resultado parcial del operador
 %endmacro
 
-global asmSobel
-
-section .data
-unos:		dw 1, 1, 1, 1
-dos:		dw 2, 2, 2, 2
-menos_unos:	dw -1, -1, -1, -1
-menos_dos:	dw -2, -2, -2, -2
+global	asmSobel
 
 section .text
 
 asmSobel:
 	doEnter
 
-sigue:
-	mov	edi, SRC
+	mov	edi, SRC		;edi <-- *SRC
 	mov	edi, [edi + IMAGE_DATA]
+	
+	mov	edx, WIDTH		;edx <-- WIDTH
 
-	mov	esi, DST
+	mov	esi, DST		;esi <-- *DST
 	mov	esi, [esi + IMAGE_DATA]
-	
-	mov	ebx, HEIGHT
-	sub	ebx, 2
-	mov	edx, 80
-	mov	eax, edx
-	;sar	edx, 3
-	;mov	ecx, 80
-	;inc	ecx
-	;mov	edx, ecx
-; 	sar	edx, 4
-	;mov	ecx, edx
+	inc 	esi
+	add	esi, edx		;esi apunta a la segunda fila segunda columna
 
-	lea	esi, [esi + eax]
+	mov	ebx, HEIGHT		;va a ser mi variable de altura
 
-ciclo_x:
- 	pxor	mm6, mm6
-	pxor	mm7, mm7
-	procedimiento unos, menos_unos, 0
 
-	procedimiento dos, menos_dos, 1
-
-	procedimiento unos, menos_unos, 2
-
-	psllq	mm7, 16
-
-	paddusw	mm6, mm7
-	pxor	mm7, mm7
-	packsswb mm6, mm7
-
-	movq	[esi], mm6
-	add	edi, 4
-	add	esi, 4 
-	dec	ecx
-	
-	cmp	ecx, 2
-	je	ciclo_y
-	jmp	ciclo_x
 ciclo_y:
-	mov	ecx, edx
-	dec	ebx
-	;sub	edi, 2
-	;sub	esi, 2
+	xor	ecx, ecx
+ciclo_x:
+ 	pxor	mm6, mm6		;limpio A
+	pxor	mm7, mm7		;limpio B
+
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm5, [edi + eax]		
+		
+
+	mov	eax, esi
+	;******************************
+	; PROCESO LAS LINEAS QUE CARGUE
+	;******************************
+	sobelX mm0, mm1, mm2
+	sobelX mm1, mm2, mm3
+	sobelX mm2, mm3, mm4
+	sobelX mm3, mm4, mm5
+
+	add 	esi, 6
+	add	edi, 6
+	add	ecx, 6
+	mov	eax, edx
+	sub	eax, 8		;voy a ver si puedo seguir levantando de fuente o me paso 
+	cmp	ecx, eax	; de mi memoria
+	jle	ciclo_x
+
+	sub	ecx, 6		;voy a sumar el resto en esi de los pixeles no procesados
+	mov	eax, WIDTH	;con lo que debiera llegar a la primera columna de la siguiente fila
+	sub	eax, ecx
+	add	esi, eax	
+	inc	esi
+	add	esi, edx
+	add	esi, edx
+	add	esi, edx	;esi debiera apuntar a la segunda columna de la fila
+				;cuatro lugares mas abajo de la primera fila anterior
+	mov	eax, WIDTH
+	shr	eax, 2
+	add	edx, eax	;desplazo a 
+
+	sub	ebx, 4		;aca debo ver si me pase del area de la imagen y sino saltar
 	cmp	ebx, 0
-	jne ciclo_x
+	jge	ciclo_y		
 
 fin:
 	doLeave 0, 1
