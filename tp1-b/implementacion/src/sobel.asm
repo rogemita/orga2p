@@ -10,6 +10,7 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 %define REMAINDER	[ebp - 4]
+%define	STEP		6
 
 %macro obtenerBajo 2-3 0
 	movq		%1, %2		;copio el dato
@@ -33,7 +34,7 @@
 
 
 
-%macro	sobelX 3
+%macro	sobelX 3-4 0
 	;**************************
 	; VOY A APLICAR EL OPERADOR
 	; EN LA PARTE BAJA
@@ -59,7 +60,9 @@
 	; TERMINE COPIO A DESTINO
 	;************************
 	packsswb	mm6, mm6
-	movq		[eax], mm6	;copio los 8 bytes al destino de los cuales 6 son validos
+	movd		[eax], mm6	;copio los 4 bytes al destino
+	
+%if %4 = 0
 	add		eax, 4	;salto la linea siguiente
 	
 	;**************************
@@ -90,8 +93,9 @@
 	packsswb	mm6, mm6
 	;psllq		mm6, 32
 	;psrlq		mm6, 32
-	movq		[eax], mm6	;copio los 8 bytes al destino de los cuales 6 son validos
+	movd		[eax], mm6	;copio los 4 bytes al destino de los cuales 2 son validos
 	sub		eax, 4
+%endif
 	add		eax, edx	;salto la linea siguiente
 
 %endmacro
@@ -106,7 +110,7 @@ asmSobel:
 	xor	edx, edx
 	mov	eax, SRC
 	mov	eax, [eax + WIDTH_STEP]
-	mov	ebx, 6
+	mov	ebx, STEP
 	div	ebx
 	mov	REMAINDER, edx		;consigo el resto del ancho respecto de 6
 
@@ -155,16 +159,56 @@ ciclo_x:
 	sobelX mm2, mm3, mm4
 	sobelX mm3, mm4, mm5
 
-	add 	esi, 6		
-	add	edi, 6
-	add	ecx, 6
+	add 	esi, STEP		
+	add	edi, STEP
+	add	ecx, STEP
+
 	cmp	ecx, edx
 	jl	ciclo_x
+
+	cmp	ebx, 4
+	jle	noProcesa	
+
+
+	;******************************
+	; PROCESO EL RESTO DE
+	; LAS LINEAS QUE CARGUE
+	;******************************
+
+	sub	esi, 2
+	sub	edi, 2
+
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm5, [edi + eax]
+
+	mov	eax, esi
+
+	sobelX mm0, mm1, mm2, 1
+	sobelX mm1, mm2, mm3, 1
+	sobelX mm2, mm3, mm4, 1
+	sobelX mm3, mm4, mm5, 1
+
+	add	esi, 2
+	add	edi, 2
+
+noProcesa:
 
 	mov	eax, REMAINDER
 
 	sub	esi, eax
 	sub	edi, eax
+
 	;sub	ecx, 6		;voy a sumar el resto en esi de los pixeles no procesados
 	;mov	eax, edx	;con lo que debiera llegar a la primera columna de la siguiente fila
 	;sub	eax, ecx
