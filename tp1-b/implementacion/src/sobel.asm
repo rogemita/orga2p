@@ -32,28 +32,28 @@
 	psrlw		%1, 8
 %endmacro      
 
-
-
-%macro	sobelX 3-4 0
+%macro	sobelPrewittX 4-5 0
 	;**************************
 	; VOY A APLICAR EL OPERADOR
 	; EN LA PARTE BAJA
 	;**************************
-	obtenerBajo	mm6, %2		;obtengo los bajos de la segunda fila
+	obtenerBajo	mm6, %2, 16	;obtengo los bajos de la segunda fila
+%if %4 = 0
 	psllw		mm6, 1		;multiplico por dos
-
-	obtenerBajo	mm7, %1		;obtengo los bajos de la primera fila
-	paddusw		mm6, mm7	;sumo saturado
-	obtenerBajo	mm7, %3		;obtengo los bajos de la tercera fila
-	paddusw		mm6, mm7	;sumo saturado
-
-	obtenerBajo	mm7, %2, 16	;obtengo los bajos de la segunda fila
-	psllw		mm7, 1		;multiplico por dos
-	psubusw		mm6, mm7
-
+%endif
 	obtenerBajo	mm7, %1, 16	;obtengo los bajos de la primera fila
-	psubusw		mm6, mm7	;sumo saturado
+	paddusw		mm6, mm7	;sumo saturado
 	obtenerBajo	mm7, %3, 16	;obtengo los bajos de la tercera fila
+	paddusw		mm6, mm7	;sumo saturado
+
+	obtenerBajo	mm7, %2		;obtengo los bajos de la segunda fila
+%if %4 = 0
+	psllw		mm7, 1		;multiplico por dos
+%endif
+	psubusw		mm6, mm7
+	obtenerBajo	mm7, %1		;obtengo los bajos de la primera fila
+	psubusw		mm6, mm7	;sumo saturado
+	obtenerBajo	mm7, %3		;obtengo los bajos de la tercera fila
 	psubusw		mm6, mm7	;sumo saturado
 
 	;************************
@@ -62,42 +62,40 @@
 	packsswb	mm6, mm6
 	movd		[eax], mm6	;copio los 4 bytes al destino
 	
-%if %4 = 0
+%if %5 = 0
 	add		eax, 4	;salto la linea siguiente
 	
 	;**************************
 	; VOY A APLICAR EL OPERADOR
 	; EN LA PARTE ALTA
 	;**************************	
-	obtenerAlto	mm6, %2		;obtengo los bajos de la segunda fila
+	obtenerAlto	mm6, %2, 16	;obtengo los bajos de la segunda fila
+%if %4 = 0
 	psllw		mm6, 1		;multiplico por dos
-
-	obtenerAlto	mm7, %1		;obtengo los bajos de la primera fila
-	paddusw		mm6, mm7	;sumo saturado
-	obtenerAlto	mm7, %3		;obtengo los bajos de la tercera fila
-	paddusw		mm6, mm7	;sumo saturado
-
-	obtenerAlto	mm7, %2, 16	;obtengo los bajos de la segunda fila
-	psllw		mm7, 1		;multiplico por dos
-	psubusw		mm6, mm7
-
+%endif
 	obtenerAlto	mm7, %1, 16	;obtengo los bajos de la primera fila
-	psubusw		mm6, mm7	;sumo saturado
+	paddusw		mm6, mm7	;sumo saturado
 	obtenerAlto	mm7, %3, 16	;obtengo los bajos de la tercera fila
+	paddusw		mm6, mm7	;sumo saturado
+
+	obtenerAlto	mm7, %2		;obtengo los bajos de la segunda fila
+%if %4 = 0
+	psllw		mm7, 1		;multiplico por dos
+%endif
+	psubusw		mm6, mm7
+	obtenerAlto	mm7, %1		;obtengo los bajos de la primera fila
+	psubusw		mm6, mm7	;sumo saturado
+	obtenerAlto	mm7, %3		;obtengo los bajos de la tercera fila
 	psubusw		mm6, mm7	;sumo saturado
 
 	;************************
 	; TERMINE COPIO A DESTINO
 	;************************
-	;pxor		mm7, mm7
 	packsswb	mm6, mm6
-	;psllq		mm6, 32
-	;psrlq		mm6, 32
 	movd		[eax], mm6	;copio los 4 bytes al destino de los cuales 2 son validos
 	sub		eax, 4
 %endif
 	add		eax, edx	;salto la linea siguiente
-
 %endmacro
 
 global	asmSobel
@@ -154,10 +152,10 @@ ciclo_x:
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	sobelX mm0, mm1, mm2
-	sobelX mm1, mm2, mm3
-	sobelX mm2, mm3, mm4
-	sobelX mm3, mm4, mm5
+	sobelPrewittX mm0, mm1, mm2, 0
+	sobelPrewittX mm1, mm2, mm3, 0
+	sobelPrewittX mm2, mm3, mm4, 0
+	sobelPrewittX mm3, mm4, mm5, 0
 
 	add 	esi, STEP		
 	add	edi, STEP
@@ -194,28 +192,20 @@ ciclo_x:
 
 	mov	eax, esi
 
-	sobelX mm0, mm1, mm2, 1
-	sobelX mm1, mm2, mm3, 1
-	sobelX mm2, mm3, mm4, 1
-	sobelX mm3, mm4, mm5, 1
+	sobelPrewittX mm0, mm1, mm2, 0, 1
+	sobelPrewittX mm1, mm2, mm3, 0, 1
+	sobelPrewittX mm2, mm3, mm4, 0, 1
+	sobelPrewittX mm3, mm4, mm5, 0, 1
 
 	add	esi, 2
 	add	edi, 2
 
 noProcesa:
-
 	mov	eax, REMAINDER
 
 	sub	esi, eax
 	sub	edi, eax
 
-	;sub	ecx, 6		;voy a sumar el resto en esi de los pixeles no procesados
-	;mov	eax, edx	;con lo que debiera llegar a la primera columna de la siguiente fila
-	;sub	eax, ecx
-	;add	esi, eax
-	;add	edi, eax
-	;sub	esi, 5
-	;sub	edi, 5
 	mov	eax, edx
 	add	eax, edx
 	add	eax, edx
