@@ -39,8 +39,10 @@ int main( int argc, char** argv )
    cvSobel(src, dst, 1,1,3);    // Esta parte es la que tienen que programar los alumnos en ASM	y comparar
    cvSaveImage("img/res/c/derivada xy.jpg", dst);
 */
-	asmSobel(src, dst, cvGetSize (src).width, cvGetSize (src).height, 0, 0);
-	cvSaveImage("img/res/asm/prueba.jpg", dst);
+    cvSobel(src, dst, 1,0,3); 	// Esta parte es la que tienen que programar los alumnos en ASM	y comparar
+    cvSaveImage("img/res/c/sobel10.jpg", dst);
+    asmSobel(src, dst, cvGetSize (src).width, cvGetSize (src).height, 0, 0);
+    cvSaveImage("img/res/asm/sobel10.jpg", dst);
 
    return 0;
 
