@@ -42,24 +42,24 @@
 	psllw		mm6, 1		;multiplico por dos
 %endif
 	obtenerBajo	mm7, %1, 16	;obtengo los bajos de la primera fila
-	paddsw		mm6, mm7	;sumo saturado
+	paddusw		mm6, mm7	;sumo saturado
 	obtenerBajo	mm7, %3, 16	;obtengo los bajos de la tercera fila
-	paddsw		mm6, mm7	;sumo saturado
+	paddusw		mm6, mm7	;sumo saturado
 
 	obtenerBajo	mm7, %2		;obtengo los bajos de la segunda fila
 %if %4 = 0
 	psllw		mm7, 1		;multiplico por dos
 %endif
-	psubsw		mm6, mm7
+	psubusw		mm6, mm7
 	obtenerBajo	mm7, %1		;obtengo los bajos de la primera fila
-	psubsw		mm6, mm7	;sumo saturado
+	psubusw		mm6, mm7	;sumo saturado
 	obtenerBajo	mm7, %3		;obtengo los bajos de la tercera fila
-	psubsw		mm6, mm7	;sumo saturado
+	psubusw		mm6, mm7	;sumo saturado
 
 	;************************
 	; TERMINE COPIO A DESTINO
 	;************************
-	packsswb	mm6, mm6
+	packuswb	mm6, mm6
 	movd		[eax], mm6	;copio los 4 bytes al destino
 	
 %if %5 = 0
@@ -74,24 +74,24 @@
 	psllw		mm6, 1		;multiplico por dos
 %endif
 	obtenerAlto	mm7, %1, 16	;obtengo los bajos de la primera fila
-	paddsw		mm6, mm7	;sumo saturado
+	paddusw		mm6, mm7	;sumo saturado
 	obtenerAlto	mm7, %3, 16	;obtengo los bajos de la tercera fila
-	paddsw		mm6, mm7	;sumo saturado
+	paddusw		mm6, mm7	;sumo saturado
 
 	obtenerAlto	mm7, %2		;obtengo los bajos de la segunda fila
 %if %4 = 0
 	psllw		mm7, 1		;multiplico por dos
 %endif
-	psubsw		mm6, mm7
+	psubusw		mm6, mm7
 	obtenerAlto	mm7, %1		;obtengo los bajos de la primera fila
-	psubsw		mm6, mm7	;sumo saturado
+	psubusw		mm6, mm7	;sumo saturado
 	obtenerAlto	mm7, %3		;obtengo los bajos de la tercera fila
-	psubsw		mm6, mm7	;sumo saturado
+	psubusw		mm6, mm7	;sumo saturado
 
 	;************************
 	; TERMINE COPIO A DESTINO
 	;************************
-	packsswb	mm6, mm6
+	packuswb	mm6, mm6
 	movd		[eax], mm6	;copio los 4 bytes al destino de los cuales 2 son validos
 	sub		eax, 4
 %endif
