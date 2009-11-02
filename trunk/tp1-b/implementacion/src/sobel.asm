@@ -11,9 +11,10 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 %define REMAINDER	[ebp - 4]
-%define MASK_LO		[ebp - 8]
-%define MASK_HI		[ebp - 12]
-%define	STEP		6
+%define MASK_LO		[ebp - 12]
+%define MASK_HI		[ebp - 8]
+%define	STEP_X		6
+%define	STEP_Y		6
 %define RESERVED_BYTES	12
 
 
@@ -28,7 +29,7 @@ asmSobel:
 	xor	edx, edx
 	mov	eax, SRC
 	mov	eax, [eax + WIDTH_STEP]
-	mov	ebx, STEP
+	mov	ebx, STEP_X
 	div	ebx
 	mov	REMAINDER, edx		;consigo el resto del ancho respecto de 6
 
@@ -78,9 +79,9 @@ cicloSX_x:
 	sobelPrewittX mm2, mm3, mm4, 0
 	sobelPrewittX mm3, mm4, mm5, 0
 
-	add 	esi, STEP		
-	add	edi, STEP
-	add	ecx, STEP
+	add 	esi, STEP_X		
+	add	edi, STEP_X
+	add	ecx, STEP_X
 
 	cmp	ecx, edx
 	jl	cicloSX_x
@@ -138,9 +139,18 @@ noProcesaSX:
 	jge	cicloSX_y		
 
 sobelY:
+	xor	edx, edx
+	mov	eax, SRC
+	mov	eax, [eax + WIDTH_STEP]
+	mov	ebx, STEP_Y
+	div	ebx
+	mov	REMAINDER, edx		;consigo el resto del ancho respecto de 6
 
 	mov	edi, SRC		;edi <-- *SRC
 	mov	edi, [edi + IMAGE_DATA]
+
+	mov	edx, SRC
+	mov	edx, [edx + WIDTH_STEP]
 	
 	mov	esi, DST		;esi <-- *DST
 	mov	esi, [esi + IMAGE_DATA]
@@ -149,13 +159,13 @@ sobelY:
 
 	mov	ebx, HEIGHT		;va a ser mi variable de altura
 
-cicloSY_y:
-	xor	ecx, ecx
-cicloSY_x:
- 	pxor	mm6, mm6		;limpio A
 	pxor	mm7, mm7		;limpio B
 	mov	dword MASK_LO, 0x00FF0000	;OJO ACA que estoy borrando este byte por el tema del or a destino para no procesar basura
 	mov	dword MASK_HI, 0x00FF00FF
+
+cicloSY_y:
+	xor	ecx, ecx
+cicloSY_x:
 	movq	mm7, MASK_LO
 
 	xor	eax, eax		;offset de linea
@@ -179,14 +189,14 @@ cicloSY_x:
 	sobelPrewittY mm1, mm3
 	sobelPrewittY mm2, mm4
 
-	add 	esi, STEP		
-	add	edi, STEP
-	add	ecx, STEP
+	add 	esi, STEP_Y		
+	add	edi, STEP_Y
+	add	ecx, STEP_Y
 
 	cmp	ecx, edx
 	jl	cicloSY_x
 
-	cmp	ebx, 4
+	cmp	ebx, 3
 	jle	noProcesaSY
 
 
@@ -227,11 +237,10 @@ noProcesaSY:
 
 	mov	eax, edx
 	add	eax, edx
-	add	eax, edx
 	add	esi, eax
 	add	edi, eax	;esi debiera apuntar a la segunda columna de la fila
 				;cuatro lugares mas abajo de la primera fila anterior
-	sub	ebx, 4		;aca debo ver si me pase del area de la imagen y sino saltar
+	sub	ebx, 3		;aca debo ver si me pase del area de la imagen y sino saltar
 	cmp	ebx, 0
 	jge	cicloSY_y		
 

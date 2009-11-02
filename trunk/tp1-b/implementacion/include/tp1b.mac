@@ -128,7 +128,7 @@
 %if %3 = 0
 	psllw	mm6, 1			;multiplico por dos
 %endif
-	paddusw	mm6, mm5		;sumo el segundo pixel
+	paddusw	mm5, mm6		;sumo el segundo pixel
 	movq	mm6, %1
 	psllq	mm6, 16			;cargo y me quedo con el pixel dos a derecha
 	pand	mm6, mm7
@@ -143,13 +143,14 @@
 %if %3 = 0
 	psllw	mm6, 1			;multiplico por dos
 %endif	
-	psubsw	mm5, mm6
+	psubusw	mm5, mm6
 	movq	mm6, %2
 	psllq	mm6, 16			;cargo y me quedo con el pixel dos a derecha
 	pand	mm6, mm7
 	psubusw	mm5, mm6		; ya el operador aplicado en mm5 a los pixeles, 2, 4, 6, 8
-	packuswb	mm5, mm5
-	punpcklbw	mm5, mm5	;saturo los pixeles
+	pxor	mm6, mm6
+	packuswb	mm5, mm6
+	punpcklbw	mm5, mm6	;saturo los pixeles
 	por	mm5, [eax]
 	movq	[eax], mm5		;copio los pixeles
 
@@ -164,14 +165,14 @@
 %if %3 = 0
 	psllw	mm6, 1			;multiplico por dos
 %endif
-	paddusw	mm6, mm5		;sumo el segundo pixel
+	paddusw	mm5, mm6		;sumo el segundo pixel
 	movq	mm6, %1
 	psllq	mm6, 8			;cargo y me quedo con el pixel dos a derecha
 	pand	mm6, mm7
 	paddusw	mm5, mm6		; ya tengo acumulado en mm5 la parte positiva de los pixeles, 1, 3, 5
 
 	movq	mm6, %2
-	psrlq	mm5, 8
+	psrlq	mm6, 8
 	pand	mm6, mm7
 	psubusw	mm5, mm6
 	movq	mm6, %2
@@ -179,14 +180,18 @@
 %if %3 = 0
 	psllw	mm6, 1			;multiplico por dos
 %endif	
-	psubsw	mm5, mm6
+	psubusw	mm5, mm6
 	movq	mm6, %2
 	psllq	mm6, 8			;cargo y me quedo con el pixel dos a derecha
 	pand	mm6, mm7
 	psubusw	mm5, mm6		; ya el operador aplicado en mm5 a los pixeles, 2, 4, 6, 8
-	packuswb	mm5, mm5
-	punpcklbw	mm5, mm5	;saturo los pixeles
-	psllq	mm6, 8
+
+	pxor	mm6, mm6
+	packuswb	mm5, mm6
+	punpcklbw	mm5, mm6	;saturo los pixeles
+	psllq	mm5, 8
 	por	mm5, [eax]
 	movq	[eax], mm5		;copio los pixeles
+
+	add		eax, edx	;salto la linea siguiente
 %endmacro
