@@ -1,7 +1,7 @@
 #
 # ORGANIZACION Y ARQUITECTURA DEL COMPUTADOR II 
 #
-# Trabajo Practico Nro. 1
+# Trabajo Practico Nro. 2
 #
 #
 

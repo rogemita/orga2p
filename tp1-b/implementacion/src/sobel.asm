@@ -2,6 +2,7 @@
 
 %include "include/offset.inc"
 %include "include/macros.mac"
+%include "include/tp1b.mac"
 
 %define SRC		[ebp + 8]
 %define DST		[ebp + 12]
@@ -10,100 +11,19 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 %define REMAINDER	[ebp - 4]
+%define MASK_LO		[ebp - 8]
+%define MASK_HI		[ebp - 12]
 %define	STEP		6
+%define RESERVED_BYTES	12
 
-%macro obtenerBajo 2-3 0
-	movq		%1, %2		;copio el dato
-%if %3 != 0
-	psrlq		%1, %3		;desplazo dos columnas
-%endif
-	punpcklbw	%1, %1		;desempaqueto la parte baja
-	psllw		%1, 8		;retiro el excedente alto
-	psrlw		%1, 8
-%endmacro
-
-%macro obtenerAlto 2-3 0
-	movq		%1, %2		;copio el dato
-%if %3 != 0
-	psrlq		%1, %3		;desplazo dos columnas
-%endif
-	punpckhbw	%1, %1		;desempaqueto la parte baja
-	psllw		%1, 8		;retiro el excedente alto
-	psrlw		%1, 8
-%endmacro      
-
-%macro	sobelPrewittX 4-5 0
-	;**************************
-	; VOY A APLICAR EL OPERADOR
-	; EN LA PARTE BAJA
-	;**************************
-	obtenerBajo	mm6, %2, 16	;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		mm6, 1		;multiplico por dos
-%endif
-	obtenerBajo	mm7, %1, 16	;obtengo los bajos de la primera fila
-	paddusw		mm6, mm7	;sumo saturado
-	obtenerBajo	mm7, %3, 16	;obtengo los bajos de la tercera fila
-	paddusw		mm6, mm7	;sumo saturado
-
-	obtenerBajo	mm7, %2		;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		mm7, 1		;multiplico por dos
-%endif
-	psubusw		mm6, mm7
-	obtenerBajo	mm7, %1		;obtengo los bajos de la primera fila
-	psubusw		mm6, mm7	;sumo saturado
-	obtenerBajo	mm7, %3		;obtengo los bajos de la tercera fila
-	psubusw		mm6, mm7	;sumo saturado
-
-	;************************
-	; TERMINE COPIO A DESTINO
-	;************************
-	packuswb	mm6, mm6
-	movd		[eax], mm6	;copio los 4 bytes al destino
-	
-%if %5 = 0
-	add		eax, 4	;salto la linea siguiente
-	
-	;**************************
-	; VOY A APLICAR EL OPERADOR
-	; EN LA PARTE ALTA
-	;**************************	
-	obtenerAlto	mm6, %2, 16	;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		mm6, 1		;multiplico por dos
-%endif
-	obtenerAlto	mm7, %1, 16	;obtengo los bajos de la primera fila
-	paddusw		mm6, mm7	;sumo saturado
-	obtenerAlto	mm7, %3, 16	;obtengo los bajos de la tercera fila
-	paddusw		mm6, mm7	;sumo saturado
-
-	obtenerAlto	mm7, %2		;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		mm7, 1		;multiplico por dos
-%endif
-	psubusw		mm6, mm7
-	obtenerAlto	mm7, %1		;obtengo los bajos de la primera fila
-	psubusw		mm6, mm7	;sumo saturado
-	obtenerAlto	mm7, %3		;obtengo los bajos de la tercera fila
-	psubusw		mm6, mm7	;sumo saturado
-
-	;************************
-	; TERMINE COPIO A DESTINO
-	;************************
-	packuswb	mm6, mm6
-	movd		[eax], mm6	;copio los 4 bytes al destino de los cuales 2 son validos
-	sub		eax, 4
-%endif
-	add		eax, edx	;salto la linea siguiente
-%endmacro
 
 global	asmSobel
 
 section .text
 
 asmSobel:
-	doEnter 4
+	doEnter RESERVED_BYTES
+
 
 	xor	edx, edx
 	mov	eax, SRC
@@ -126,10 +46,11 @@ asmSobel:
 
 	mov	ebx, HEIGHT		;va a ser mi variable de altura
 
+sobelX:
 
-ciclo_y:
+cicloSX_y:
 	xor	ecx, ecx
-ciclo_x:
+cicloSX_x:
  	pxor	mm6, mm6		;limpio A
 	pxor	mm7, mm7		;limpio B
 
@@ -162,10 +83,10 @@ ciclo_x:
 	add	ecx, STEP
 
 	cmp	ecx, edx
-	jl	ciclo_x
+	jl	cicloSX_x
 
 	cmp	ebx, 4
-	jle	noProcesa	
+	jle	noProcesaSX
 
 
 	;******************************
@@ -200,7 +121,7 @@ ciclo_x:
 	add	esi, 2
 	add	edi, 2
 
-noProcesa:
+noProcesaSX:
 	mov	eax, REMAINDER
 
 	sub	esi, eax
@@ -214,7 +135,105 @@ noProcesa:
 				;cuatro lugares mas abajo de la primera fila anterior
 	sub	ebx, 4		;aca debo ver si me pase del area de la imagen y sino saltar
 	cmp	ebx, 0
-	jge	ciclo_y		
+	jge	cicloSX_y		
+
+sobelY:
+
+	mov	edi, SRC		;edi <-- *SRC
+	mov	edi, [edi + IMAGE_DATA]
+	
+	mov	esi, DST		;esi <-- *DST
+	mov	esi, [esi + IMAGE_DATA]
+	inc 	esi
+	add	esi, edx		;esi apunta a la segunda fila segunda columna
+
+	mov	ebx, HEIGHT		;va a ser mi variable de altura
+
+cicloSY_y:
+	xor	ecx, ecx
+cicloSY_x:
+ 	pxor	mm6, mm6		;limpio A
+	pxor	mm7, mm7		;limpio B
+	mov	dword MASK_LO, 0x00FF0000	;OJO ACA que estoy borrando este byte por el tema del or a destino para no procesar basura
+	mov	dword MASK_HI, 0x00FF00FF
+	movq	mm7, MASK_LO
+
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+		
+	mov	eax, esi
+
+	;******************************
+	; PROCESO LAS LINEAS QUE CARGUE
+	;******************************
+	sobelPrewittY mm0, mm2
+	sobelPrewittY mm1, mm3
+	sobelPrewittY mm2, mm4
+
+	add 	esi, STEP		
+	add	edi, STEP
+	add	ecx, STEP
+
+	cmp	ecx, edx
+	jl	cicloSY_x
+
+	cmp	ebx, 4
+	jle	noProcesaSY
+
+
+	;******************************
+	; PROCESO EL RESTO DE
+	; LAS LINEAS QUE CARGUE
+	;******************************
+
+	sub	esi, 2
+	sub	edi, 2
+
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+		
+	mov	eax, esi
+
+	sobelPrewittY mm0, mm2
+	sobelPrewittY mm1, mm3
+	sobelPrewittY mm2, mm4
+
+	add	esi, 2
+	add	edi, 2
+
+noProcesaSY:
+	mov	eax, REMAINDER
+
+	sub	esi, eax
+	sub	edi, eax
+
+	mov	eax, edx
+	add	eax, edx
+	add	eax, edx
+	add	esi, eax
+	add	edi, eax	;esi debiera apuntar a la segunda columna de la fila
+				;cuatro lugares mas abajo de la primera fila anterior
+	sub	ebx, 4		;aca debo ver si me pase del area de la imagen y sino saltar
+	cmp	ebx, 0
+	jge	cicloSY_y		
 
 fin:
-	doLeave 4, 1
+	doLeave RESERVED_BYTES, 1
