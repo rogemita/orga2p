@@ -112,7 +112,6 @@
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;	registro2
-;	registro3
 ;	duplica?	debe duplicar el valor del primer registro?
 ;	procesaAmbos	indica si debe procesar el dato bajo y el alto
 ;========================
