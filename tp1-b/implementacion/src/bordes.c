@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #define testOperator(OPERATOR, XDERIVATE, YDERIVATE)						\
+	cvSet(dst_asm, CV_RGB(0,0,0),NULL);								\
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
@@ -11,6 +12,7 @@
 	printf(#OPERATOR #XDERIVATE #YDERIVATE " demoro: %i\n", tscl);
 
 #define testOperatorNoPrint(OPERATOR, XDERIVATE, YDERIVATE)						\
+	cvSet(dst_asm, CV_RGB(0,0,0),NULL);								\
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
@@ -18,7 +20,7 @@
 
 #define	CORRIDAS	1
 //extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
-//extern void asmPrewitt(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
+extern void asmPrewitt(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmSobel(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 
 int main( int argc, char** argv ){
@@ -107,18 +109,21 @@ int main( int argc, char** argv ){
 	printf("asmSobel11 tarda en un promedio de %i corridas: %lld\n", CORRIDAS, promedios[5]);
 
 	//SOBEL CV
+	cvSet(dst, CV_RGB(0,0,0),NULL);
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));
 	cvSobel(src, dst, 1,0,3); 	
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));
 	cvSaveImage("img/res/c/sobelDX.BMP", dst);
 	printf("cvSobel10 demoro: %i\n", tscl);
 
+	cvSet(dst, CV_RGB(0,0,0),NULL);
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));
 	cvSobel(src, dst, 0,1,3); 	
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));
 	cvSaveImage("img/res/c/sobelDY.BMP", dst);
 	printf("cvSobel01 demoro: %i\n", tscl);
 
+	cvSet(dst, CV_RGB(0,0,0),NULL);
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));
 	cvSobel(src, dst, 1,1,3);
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));
@@ -130,12 +135,12 @@ int main( int argc, char** argv ){
 	testOperator(asmSobel,0,1);
 	testOperator(asmSobel,1,1);
 
-/*
+
 	//PREWITT
 	testOperator(asmPrewitt,1,0);
 	testOperator(asmPrewitt,0,1);
 	testOperator(asmPrewitt,1,1);
-
+/*
 	//PREWITT
 	testOperator(asmRoberts,1,0);	
 	testOperator(asmRoberts,0,1);

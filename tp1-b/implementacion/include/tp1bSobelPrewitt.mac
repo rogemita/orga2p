@@ -36,10 +36,12 @@
 
 	mov	ebx, HEIGHT		;va a ser mi variable de altura
 	
-	cmp	XORDER, 0
-	jne	%%processX	
-	jmp	%%processY
-%%processX:
+	mov	eax, XORDER
+
+	cmp	eax, 0
+	jne	%%procesaX	
+	jmp	%%preProcesaY
+%%procesaX:
 
 %%cicloSX_y:
 	xor	ecx, ecx
@@ -76,7 +78,7 @@
 	add	ecx, STEP_X
 
 	cmp	ecx, edx
-	jl	cicloSX_x
+	jl	%%cicloSX_x
 
 	cmp	ebx, 4
 	jg	%%procesaSX
@@ -131,6 +133,14 @@
 	cmp	ebx, 0
 	jge	%%cicloSX_y		
 
+%%preProcesaY:
+
+	mov	eax, YORDER
+	cmp	eax, 0
+	jne	%%procesaY	
+	jmp	%%fin
+
+
 %%procesaY:
 	xor	edx, edx
 	mov	eax, SRC
@@ -178,9 +188,9 @@
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	sobelPrewittY mm0, mm2, %1
-	sobelPrewittY mm1, mm3, %1
-	sobelPrewittY mm2, mm4, %1
+	sobelPrewittY mm2, mm0, %1
+	sobelPrewittY mm3, mm1, %1
+	sobelPrewittY mm4, mm2, %1
 
 	add 	esi, STEP_Y		
 	add	edi, STEP_Y
@@ -217,9 +227,9 @@
 		
 	mov	eax, esi
 
-	sobelPrewittY mm0, mm2, %1
-	sobelPrewittY mm1, mm3, %1
-	sobelPrewittY mm2, mm4, %1
+	sobelPrewittY mm2, mm0, %1
+	sobelPrewittY mm3, mm1, %1
+	sobelPrewittY mm4, mm2, %1
 
 	add	esi, 2
 	add	edi, 2
@@ -239,6 +249,6 @@
 	cmp	ebx, 0
 	jge	%%cicloSY_y		
 
-fin:
+%%fin:
 	doLeave RESERVED_BYTES, 1
 %endmacro
