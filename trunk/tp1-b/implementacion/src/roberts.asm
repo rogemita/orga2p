@@ -1,6 +1,6 @@
 %include "include/offset.inc"
 %include "include/macros.mac"
-%include "include/tp1bSobelPrewitt.mac"
+%include "include/tp1bRoberts.mac"
 
 %define SRC		[ebp + 8]
 %define DST		[ebp + 12]
@@ -9,13 +9,9 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 
-global	asmSobel
-global	asmPrewitt
+global	asmRoberts
 
 section .text
 
-asmSobel:
-	sobelPrewitt 1	
-
-asmPrewitt:
-	sobelPrewitt 0
+asmRoberts:
+	roberts

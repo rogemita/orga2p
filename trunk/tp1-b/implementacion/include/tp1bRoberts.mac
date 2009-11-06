@@ -1,0 +1,313 @@
+%define REMAINDER	[ebp - 4]
+%define	STEP_X		8
+%define RESERVED_BYTES	0
+
+
+;========================
+; MACRO robertsXY
+;========================
+; Cuerpo de codigo que aplica el operador de Roberts en el orden x o y
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	esX?
+;========================
+%macro	robertsXY 3
+	;procesamos la parte baja
+	movq		mm7, %2
+	movq		mm6, %1
+%if %3 = 0
+	psllq		mm7, 8
+%else
+	psllq		mm6, 8
+%endif
+	punpcklbw	mm7, mm7
+	punpcklbw	mm6, mm6
+	psubusw		mm6, mm7
+
+	packuswb	mm6, mm6
+	
+
+	movd		[eax], mm6	;copio los 4 bytes al destino
+	
+	add		eax, 4		;paso a los proximos cuatro bytes
+
+	;procesamos la parte alta
+	movq		mm7, %2
+	movq		mm6, %1
+%if %3 = 0
+	psllq		mm7, 8
+%else
+	psllq		mm6, 8
+%endif
+	punpckhbw	mm7, mm7
+
+	punpckhbw	mm6, mm6
+	psubusw		mm6, mm7
+
+	packuswb	mm6, mm6
+
+	;por		mm6, [eax]
+	movd		[eax], mm6	;copio los 4 bytes al destino
+	sub		eax, 4
+	add		eax, edx	;salto la linea siguiente
+%endmacro
+
+
+;========================
+; MACRO robertsX
+;========================
+; Cuerpo de codigo que aplica el operador de Roberts en el orden x
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;========================
+%macro	robertsX 2
+	robertsXY %1, %2, 0
+%endmacro
+
+;========================
+; MACRO robertsY
+;========================
+; Cuerpo de codigo que aplica el operador de Roberts en el orden x
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;========================
+%macro	robertsY 2
+	robertsXY %1, %2, 1
+%endmacro
+
+;========================
+; MACRO roberts
+;========================
+; Cuerpo de codigo que aplica el operador de Roberts
+;========================
+%macro roberts 0
+	doEnter RESERVED_BYTES
+
+
+	xor	edx, edx
+	mov	eax, SRC
+	mov	eax, [eax + WIDTH_STEP]
+	mov	ebx, STEP_X
+	div	ebx
+	mov	REMAINDER, edx		;consigo el resto del ancho respecto de 6
+
+	mov	edi, SRC		;edi <-- *SRC
+	mov	edi, [edi + IMAGE_DATA]
+	
+	mov	edx, SRC
+	mov	edx, [edx + WIDTH_STEP]
+
+	mov	esi, DST		;esi <-- *DST
+	mov	esi, [esi + IMAGE_DATA]
+	inc 	esi
+	add	esi, edx		;esi apunta a la segunda fila segunda columna
+
+	mov	ebx, HEIGHT		;va a ser mi variable de altura
+	
+	mov	eax, XORDER
+
+	cmp	eax, 0
+	jne	%%procesaX	
+	jmp	%%preProcesaY
+%%procesaX:
+
+%%cicloSX_y:
+	xor	ecx, ecx
+%%cicloSX_x:
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm5, [edi + eax]		
+	add	eax, edx		;salto una linea
+		
+	mov	eax, esi
+
+	;******************************
+	; PROCESO LAS LINEAS QUE CARGUE
+	;******************************
+	robertsX mm0, mm1
+	robertsX mm1, mm2
+	robertsX mm2, mm3
+	robertsX mm3, mm4
+	robertsX mm4, mm5
+
+
+	add 	esi, STEP_X		
+	add	edi, STEP_X
+	add	ecx, STEP_X
+
+	cmp	ecx, edx
+	jl	%%cicloSX_x
+
+	cmp	ebx, 5
+	jg	%%procesaSX
+	jmp	%%noProcesaSX
+%%procesaSX:
+
+	;******************************
+	; PROCESO EL RESTO DE
+	; LAS LINEAS QUE CARGUE
+	;******************************
+
+	dec	esi
+	dec	edi
+
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm5, [edi + eax]		
+
+	mov	eax, esi
+
+	robertsX mm0, mm1
+	robertsX mm1, mm2
+	robertsX mm2, mm3
+	robertsX mm3, mm4
+	robertsX mm4, mm5
+
+	inc	esi
+	inc	edi
+
+%%noProcesaSX:
+	mov	eax, REMAINDER
+
+	sub	esi, eax
+	sub	edi, eax
+
+	mov	eax, edx
+	add	eax, edx
+	add	eax, edx
+	add	eax, edx
+	add	esi, eax
+	add	edi, eax	;esi debiera apuntar a la segunda columna de la fila
+				;cuatro lugares mas abajo de la primera fila anterior
+	sub	ebx, 5		;aca debo ver si me pase del area de la imagen y sino saltar
+	cmp	ebx, 0
+	jge	%%cicloSX_y		
+
+%%preProcesaY:
+
+	mov	eax, YORDER
+	cmp	eax, 0
+	jne	%%procesaY	
+	jmp	%%fin
+
+
+%%procesaY:
+%%cicloSY_y:
+	xor	ecx, ecx
+%%cicloSY_x:
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm5, [edi + eax]		
+	add	eax, edx		;salto una linea
+		
+	mov	eax, esi
+
+	;******************************
+	; PROCESO LAS LINEAS QUE CARGUE
+	;******************************
+	robertsY mm0, mm1
+	robertsY mm1, mm2
+	robertsY mm2, mm3
+	robertsY mm3, mm4
+	robertsY mm4, mm5
+
+
+	add 	esi, STEP_X		
+	add	edi, STEP_X
+	add	ecx, STEP_X
+
+	cmp	ecx, edx
+	jl	%%cicloSY_x
+
+	cmp	ebx, 5
+	jg	%%procesaSY
+	jmp	%%noProcesaSY
+%%procesaSY:
+
+	;******************************
+	; PROCESO EL RESTO DE
+	; LAS LINEAS QUE CARGUE
+	;******************************
+
+	dec	esi
+	dec	edi
+
+	xor	eax, eax		;offset de linea
+
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	add	eax, edx		;salto una linea
+	movq	mm1, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm2, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm3, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm4, [edi + eax]		
+	add	eax, edx		;salto una linea
+	movq	mm5, [edi + eax]		
+
+	mov	eax, esi
+
+	robertsY mm0, mm1
+	robertsY mm1, mm2
+	robertsY mm2, mm3
+	robertsY mm3, mm4
+	robertsY mm4, mm5
+
+	inc	esi
+	inc	edi
+
+%%noProcesaSY:
+	mov	eax, REMAINDER
+
+	sub	esi, eax
+	sub	edi, eax
+
+	mov	eax, edx
+	add	eax, edx
+	add	eax, edx
+	add	eax, edx
+	add	esi, eax
+	add	edi, eax	;esi debiera apuntar a la segunda columna de la fila
+				;cuatro lugares mas abajo de la primera fila anterior
+	sub	ebx, 5		;aca debo ver si me pase del area de la imagen y sino saltar
+	cmp	ebx, 0
+	jge	%%cicloSY_y		
+
+
+%%fin:
+	doLeave RESERVED_BYTES, 1
+%endmacro
