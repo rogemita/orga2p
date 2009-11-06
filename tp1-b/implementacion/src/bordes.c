@@ -19,7 +19,7 @@
 	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".BMP", dst_asm);			
 
 #define	CORRIDAS	1
-//extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
+extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmPrewitt(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmSobel(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 
@@ -140,12 +140,12 @@ int main( int argc, char** argv ){
 	testOperator(asmPrewitt,1,0);
 	testOperator(asmPrewitt,0,1);
 	testOperator(asmPrewitt,1,1);
-/*
+
 	//PREWITT
 	testOperator(asmRoberts,1,0);	
 	testOperator(asmRoberts,0,1);
 	testOperator(asmRoberts,1,1);
-*/
+
 
 	cvReleaseData(src);
 	cvReleaseData(dst);
