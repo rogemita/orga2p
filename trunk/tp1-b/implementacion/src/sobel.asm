@@ -9,8 +9,7 @@
 %define XORDER		[ebp + 24]
 %define YORDER		[ebp + 28]
 
-global	asmSobel
-global	asmPrewitt
+global	asmSobel,	asmPrewitt
 
 section .text
 
