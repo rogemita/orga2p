@@ -246,32 +246,32 @@
 %%cicloSX_y:
 	xor	ecx, ecx
 %%cicloSX_x:
- 	pxor	xmm6, xmm6		;limpio A
-	pxor	xmm7, xmm7		;limpio B
+ 	pxor	mm6, mm6		;limpio A
+	pxor	mm7, mm7		;limpio B
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movq	mm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movq	mm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movq	mm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movq	mm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm5, [edi + eax]		
+	movq	mm5, [edi + eax]		
 		
 	mov	eax, esi
 
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	sobelPrewittX xmm0, xmm1, xmm2, %1
-	sobelPrewittX xmm1, xmm2, xmm3, %1
-	sobelPrewittX xmm2, xmm3, xmm4, %1
-	sobelPrewittX xmm3, xmm4, xmm5, %1
+	sobelPrewittX mm0, mm1, mm2, %1
+	sobelPrewittX mm1, mm2, mm3, %1
+	sobelPrewittX mm2, mm3, mm4, %1
+	sobelPrewittX mm3, mm4, mm5, %1
 
 	add 	esi, STEP_X		
 	add	edi, STEP_X
@@ -295,24 +295,24 @@
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movq	mm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movq	mm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movq	mm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movq	mm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm5, [edi + eax]	
+	movq	mm5, [edi + eax]
 
 	mov	eax, esi
 
-	sobelPrewittX xmm0, xmm1, xmm2, %1
-	sobelPrewittX xmm1, xmm2, xmm3, %1
-	sobelPrewittX xmm2, xmm3, xmm4, %1
-	sobelPrewittX xmm3, xmm4, xmm5, %1
+	sobelPrewittX mm0, mm1, mm2, %1, 1
+	sobelPrewittX mm1, mm2, mm3, %1, 1
+	sobelPrewittX mm2, mm3, mm4, %1, 1
+	sobelPrewittX mm3, mm4, mm5, %1, 1
 
 	add	esi, 2
 	add	edi, 2
@@ -362,37 +362,35 @@
 
 	mov	ebx, HEIGHT		;va a ser mi variable de altura
 
-	pxor	xmm7, xmm7		;limpio B
+	pxor	mm7, mm7		;limpio B
 	mov	dword MASK_LO, 0x00FF0000	;OJO ACA que estoy borrando este byte por el tema del or a destino para no procesar basura
 	mov	dword MASK_HI, 0x00FF00FF
-	mov	dword MASK_HI2, 0x00FF00FF
-	mov	dword MASK_HI3, 0x00FF00FF
 
 %%cicloSY_y:
 	xor	ecx, ecx
 %%cicloSY_x:
-	movntpd	xmm7, MASK_LO
+	movq	mm7, MASK_LO
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movq	mm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movq	mm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movq	mm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movq	mm4, [edi + eax]		
 		
 	mov	eax, esi
 
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	sobelPrewittY xmm2, xmm0, %1
-	sobelPrewittY xmm3, xmm1, %1
-	sobelPrewittY xmm4, xmm2, %1
+	sobelPrewittY mm2, mm0, %1
+	sobelPrewittY mm3, mm1, %1
+	sobelPrewittY mm4, mm2, %1
 
 	add 	esi, STEP_Y		
 	add	edi, STEP_Y
@@ -417,21 +415,21 @@
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movq	mm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movq	mm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movq	mm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movq	mm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movq	mm4, [edi + eax]		
 		
 	mov	eax, esi
 
-	sobelPrewittY xmm2, xmm0, %1
-	sobelPrewittY xmm3, xmm1, %1
-	sobelPrewittY xmm4, xmm2, %1
+	sobelPrewittY mm2, mm0, %1
+	sobelPrewittY mm3, mm1, %1
+	sobelPrewittY mm4, mm2, %1
 
 	add	esi, 2
 	add	edi, 2
