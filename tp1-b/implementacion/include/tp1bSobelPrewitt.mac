@@ -18,7 +18,7 @@
 ;	offset		indica si debe desplazar el dato original
 ;========================
 %macro obtenerBajo 2-3 0
-	movntpd		%1, %2		;copio el dato
+	movdqu		%1, %2		;copio el dato
 %if %3 != 0
 	psrldq		%1, %3		;desplazo dos columnas
 %endif
@@ -28,7 +28,7 @@
 %endmacro
 
 %macro obtenerAlto 2-3 0
-	movntpd		%1, %2		;copio el dato
+	movdqu		%1, %2		;copio el dato
 %if %3 != 0
 	psrldq		%1, %3		;desplazo dos columnas
 %endif
@@ -128,31 +128,31 @@
 	;**********************
 	; PROCESO PIXEL 2,4,6,8
 	;**********************
-	movntpd	xmm5, %1		;cargo el primer registro y enmascaro para pasar a word
+	movdqu	xmm5, %1		;cargo el primer registro y enmascaro para pasar a word
 	pand	xmm5, xmm7
-	movntpd	xmm6, %1		;cargo y me quedo con el pixel una a derecha
+	movdqu	xmm6, %1		;cargo y me quedo con el pixel una a derecha
 	pslldq	xmm6, 8
 	pand	xmm6, xmm7
 %if %3 = 0
 	psllw	xmm6, 1			;multiplico por dos
 %endif
 	paddusw	xmm5, xmm6		;sumo el segundo pixel
-	movntpd	xmm6, %1
+	movdqu	xmm6, %1
 	pslldq	xmm6, 16		;cargo y me quedo con el pixel dos a derecha
 	pand	xmm6, xmm7
 	paddusw	xmm5, xmm6		; ya tengo acumulado en mm5 la parte positiva de los pixeles, 2, 4, 6, 8
 
-	movntpd	xmm6, %2
+	movdqu	xmm6, %2
 	pand	xmm6, xmm7
 	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
+	movdqu	xmm6, %2
 	pslldq	xmm6, 8
 	pand	xmm6, xmm7
 %if %3 = 0
 	psllw	xmm6, 1			;multiplico por dos
 %endif	
 	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
+	movdqu	xmm6, %2
 	pslldq	xmm6, 16		;cargo y me quedo con el pixel dos a derecha
 	pand	xmm6, xmm7
 	psubusw	xmm5, xmm6		; ya el operador aplicado en mm5 a los pixeles, 2, 4, 6, 8
@@ -160,36 +160,36 @@
 	packuswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
 	por	xmm5, [eax]
-	movntpd	[eax], xmm5		;copio los pixeles
+	movdqu	[eax], xmm5		;copio los pixeles
 
 	;**********************
 	; PROCESO PIXEL 1,3,5
 	;**********************
-	movntpd	xmm5, %1		;cargo el primer registro y enmascaro para pasar a word
+	movdqu	xmm5, %1		;cargo el primer registro y enmascaro para pasar a word
 	psrldq	xmm5, 8
 	pand	xmm5, xmm7
-	movntpd	xmm6, %1		;cargo y me quedo con el pixel una a derecha
+	movdqu	xmm6, %1		;cargo y me quedo con el pixel una a derecha
 	pand	xmm6, xmm7
 %if %3 = 0
 	psllw	xmm6, 1			;multiplico por dos
 %endif
 	paddusw	xmm5, xmm6		;sumo el segundo pixel
-	movntpd	xmm6, %1
+	movdqu	xmm6, %1
 	pslldq	xmm6, 8			;cargo y me quedo con el pixel dos a derecha
 	pand	xmm6, xmm7
 	paddusw	xmm5, xmm6		; ya tengo acumulado en mm5 la parte positiva de los pixeles, 1, 3, 5
 
-	movntpd	xmm6, %2
+	movdqu	xmm6, %2
 	psrldq	xmm6, 8
 	pand	xmm6, xmm7
 	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
+	movdqu	xmm6, %2
 	pand	xmm6, xmm7
 %if %3 = 0
 	psllw	xmm6, 1			;multiplico por dos
 %endif	
 	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
+	movdqu	xmm6, %2
 	pslldq	xmm6, 8			;cargo y me quedo con el pixel dos a derecha
 	pand	xmm6, xmm7
 	psubusw	xmm5, xmm6		; ya el operador aplicado en mm5 a los pixeles, 2, 4, 6, 8
@@ -199,7 +199,7 @@
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
 	pslldq	xmm5, 8
 	por	xmm5, [eax]
-	movntpd	[eax], xmm5		;copio los pixeles
+	movdqu	[eax], xmm5		;copio los pixeles
 
 	add	eax, edx		;salto la linea siguiente
 %endmacro
@@ -251,17 +251,17 @@
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm5, [edi + eax]		
+	movdqu	xmm5, [edi + eax]		
 		
 	mov	eax, esi
 
@@ -295,17 +295,17 @@
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm5, [edi + eax]	
+	movdqu	xmm5, [edi + eax]	
 
 	mov	eax, esi
 
@@ -371,19 +371,20 @@
 %%cicloSY_y:
 	xor	ecx, ecx
 %%cicloSY_x:
-	movntpd	xmm7, MASK_LO
+	mov	eax, MASK_LO
+	movdqu	xmm7, [eax]
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 		
 	mov	eax, esi
 
@@ -417,15 +418,15 @@
 
 	xor	eax, eax		;offset de linea
 
-	movntpd	xmm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movntpd	xmm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movntpd	xmm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 		
 	mov	eax, esi
 
