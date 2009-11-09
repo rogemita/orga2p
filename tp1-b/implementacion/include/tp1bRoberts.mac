@@ -1,5 +1,5 @@
 %define REMAINDER	[ebp - 4]
-%define	STEP_X		8
+%define	STEP_X		7
 %define RESERVED_BYTES	0
 
 
@@ -17,17 +17,21 @@
 	movq		mm7, %2
 	movq		mm6, %1
 %if %3 = 0
-	psllq		mm7, 8
+	psrlq		mm6, 8		;desplazo para hacer la aritmetica
 %else
-	psllq		mm6, 8
+	psrlq		mm7, 8
 %endif
 	punpcklbw	mm7, mm7
+	psllw		mm7, 8		;limpio la parte alta del word
+	psrlw		mm7, 8
 	punpcklbw	mm6, mm6
+	psllw		mm6, 8		;limpio la parte alta del word
+	psrlw		mm6, 8
 	psubusw		mm6, mm7
 
 	packuswb	mm6, mm6
 	
-
+	por		mm6, [eax]
 	movd		[eax], mm6	;copio los 4 bytes al destino
 	
 	add		eax, 4		;paso a los proximos cuatro bytes
@@ -36,18 +40,28 @@
 	movq		mm7, %2
 	movq		mm6, %1
 %if %3 = 0
-	psllq		mm7, 8
+	psrlq		mm6, 8
 %else
-	psllq		mm6, 8
+	psrlq		mm7, 8
 %endif
 	punpckhbw	mm7, mm7
-
+	psllw		mm7, 8
+	psrlw		mm7, 8
 	punpckhbw	mm6, mm6
+	psllw		mm6, 8
+	psrlw		mm6, 8
 	psubusw		mm6, mm7
 
-	packuswb	mm6, mm6
+;  	psllq		mm7, 16
+; 	psrlq		mm7, 16
+; 	psllq		mm6, 16
+; 	psrlq		mm6, 16
 
-	;por		mm6, [eax]
+	packuswb	mm6, mm6
+	pslld		mm6, 8		;limpio el byte más alto pues no tiene dato valido
+	psrld		mm6, 8
+
+	por		mm6, [eax]
 	movd		[eax], mm6	;copio los 4 bytes al destino
 	sub		eax, 4
 	add		eax, edx	;salto la linea siguiente
@@ -207,6 +221,18 @@
 	jge	%%cicloSX_y		
 
 %%preProcesaY:
+	mov	edi, SRC		;edi <-- *SRC
+	mov	edi, [edi + IMAGE_DATA]
+	
+	mov	edx, SRC
+	mov	edx, [edx + WIDTH_STEP]
+
+	mov	esi, DST		;esi <-- *DST
+	mov	esi, [esi + IMAGE_DATA]
+	inc 	esi
+	add	esi, edx		;esi apunta a la segunda fila segunda columna
+
+	mov	ebx, HEIGHT		;va a ser mi variable de altura
 
 	mov	eax, YORDER
 	cmp	eax, 0
