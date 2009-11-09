@@ -1,0 +1,395 @@
+\documentclass[11pt,a4paper,spanish]{article}
+\usepackage{a4wide}
+\usepackage{listings}
+\lstset{language={[x86masm]Assembler}, basicstyle=\small, numbers=left, numberstyle=\tiny}
+\usepackage[spanish, activeacute]{babel} 
+\usepackage[spanish]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmic}[1]
+\frenchspacing
+\title{
+\begin{centering}
+Universidad de Buenos Aires \\
+Facultad de Ciencias Exactas y Naturales \\
+Departamento de Ciencias de la Computaci\'on \\
+\vskip 25pt
+\bf Organizaci\'on del computador II \\
+\bf Primer cuatrimestre 2009 
+\end{centering}
+}
+\author{
+Grupo: \textsc{POPA} \\
+\begin{tabular}[t]{|l|l|l|}
+\hline
+\textbf{Apellido y nombre} & \textbf{L.U.} & \textbf{mail} \\
+\hline 
+\hline
+Mita, Rogelio Iv\'an  & 635/07 & rogeliomita@gmail.com \\
+\hline
+Borgna, Karina Giselle  & 595/07 & karina\_g\_b@hotmail.com \\
+\hline
+De Micheli, Mart\'in  & 523/07 & shmdm7@gmail.com \\
+\hline
+\end{tabular}
+}
+\date{11 de junio de 2009} 
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Archivos adjuntos}
+\textsc{Funciones en Assembler} 
+\begin{itemize}
+\item Tipo de datos lista  
+\subitem \textit{constructor\_lista.asm}
+\subitem \textit{agregar\_item\_ordenado.asm} 
+\subitem \textit{borrar.asm} 	
+\subitem \textit{inicializar\_nodo.asm}
+\subitem \textit{verificar\_id.asm}
+\subitem \textit{liberar\_lista.asm} 
+
+\item Tipo de datos iterador 
+\subitem \textit{constructor\_iterador.asm} 
+\subitem \textit{hay\_proximo.asm} 		
+\subitem \textit{proximo.asm}
+\subitem \textit{item.asm} 
+\subitem \textit{liberar\_iterador.asm} 
+
+\item Efectos visuales 
+
+\end{itemize}
+
+\textsc{Definici'on de variables (archivos .mac)}
+\begin{itemize} 
+\item \textit{variables.mac} 
+\item \textit{structs.mac} 
+\end{itemize}
+
+\textsc{Enunciado e informe} 
+\begin{itemize}
+\item \textit{tp1.pdf}
+\item \textit{tp1enunciado.pdf}  
+\end{itemize}
+
+\textsc{Otros} 
+\begin{itemize}
+\item \textit{main.cpp} 
+\item \textit{structs.h} 
+\item \textit{Makefile} 
+\item \textit{Archivos de la librer'ia SDL}
+\end{itemize}
+
+\section{Instrucciones de uso}
+Manteniendo la misma estructura que utilizamos en la primera entrega de este trabajo, decidimos escribir los c'odigos de las funciones de forma separada para mayor claridad, y utilizar un archivo (\textit{structs.mac}) para definir nuestros datos usando directivas del nasm. De la misma manera, en el cd adjunto al trabajo pr'actico, se encuentran todos los archivos fuente clasificados seg'un el tipo, y utilizamos un makefile para compilar todos los archivos a la vez. 
+
+\section{Introducci'on}
+La segunda entrega de este trabajo, consiste en re implementar las funciones de busqueda de borde utilizando el set de instrucciones SSE, para procesar mayor cantidad de pixeles al mismo tiempo, y de esta forma esperamos mejorar los tiempos de preocesamiento.
+
+
+\section{Desarrollo}
+Antes de presentar los algoritmos pertinentes a cada funci'on hacemos algunas anotaciones generales:
+\begin{itemize}
+\item Nos fue pedido que en todos los algoritmos sea respetada la convenci'on \verb'C', de forma que la construcci'on del \verb'stack frame' (guardado de los registros edi, esi y ebx, ajuste de la pila, etc) se encuentra al principio de cada funci'on dentro del macro \verb'doEnter' junto con su contrapartida que se encuentra definida en el macro \verb'doLeave'.
+\item En todas las funciones, consideramos que los par'ametros pasados por referencia (excepto aquellos que deb'ian cambiarse expl'icitamente de acuerdo al enunciado) no deb'ian ser modificados, y por lo tanto, los mismos han sido guardados en variables locales o bien en registros. En algunos casos esto es muy importante, por ejemplo, cuando nos pasan un puntero a una lista, si se modifica ese puntero, se pierde la direcci'on de esa lista luego de llamar a la funci'on; y esto no puede ocurrir.
+\item Tambi'en tuvimos en cuenta que en las im'agenes las filas de p'ixeles se guardan en memoria de forma alineada.
+\end{itemize}
+A continuaci'on se exponen las funciones implementadas, junto con sus respectivos c'odigos en lenguaje ensamblador y se explica el uso que se da a los registros de prop'osito general y el funcionamiento de las mismas en l'ineas generales.
+
+\subsection{Definici'on de datos struct.mac}
+Estas son las variables globales a todos las funciones.
+\begin{lstlisting}[frame=single]
+% include "variables.mac"
+
+% define NULL 0
+% define SCREEN_ANCHO 800
+% define SCREEN_ALTO 400
+
+% define NODO_ID ( 0 )
+% define NODO_SURFACEGEN ( NODO_ID + 8 )
+% define NODO_SURFACEPERS ( NODO_SURFACEGEN + 4 )
+% define NODO_X ( NODO_SURFACEPERS + 4 )
+% define NODO_Y ( NODO_X + 4 )
+% define NODO_PROX ( NODO_Y + 4 )
+% define NODO_PREV ( NODO_PROX + 4 )
+% define NODO_SIZE ( 8 + 4 + 4 + 4 + 4 + 4 + 4 )
+
+% define LISTA ( 4 )
+
+% define ITER ( 4 )
+\end{lstlisting}
+
+\subsection{Funciones implementadas en \textit{SSE}: Efectos visuales}
+\indent Problemas generales a todas estas funciones:
+\begin{itemize}
+\item Cuando tuvimos que escribir en pantalla (screen) nos referimos al puntero a pantalla como [screen\_pixeles] debido a que screen\_pixeles es una etiqueta dentro del main.cpp que hace referencia al puntero a pantalla. 
+\item El puntero a sprite, fondo, etc. que nos pasaron como par'ametro nunca fue modificado, es decir, creamos un nuevo puntero para recorrer las im'agenes, pero el original lo dejamos intacto. 
+\item Todas las imagenes que recortamos (por ejemplo de los sprites) tienen basura para mantener la alineaci'on a 4 bytes.
+\item En las funciones generar\_fondo y recortar (sin invertir), debido a que nos mov'iamos en el sentido en que crecen las direcciones de memoria dedicimos optimizar el algoritmo en general de lectura/escritura levantando datos de a 16 bytes y escribiendo de a 16 bytes. 
+\item Cuando nos referimos a que una imagen tiene basura, queremos decir que existe una n cantidad de bytes (n entre 1 y 3) que se utilizan al final de cada fila como para que los datos queden alineados a 4 bytes. Para calcular esta basura, en todos los algoritmos procedimos de la misma manera: calculamos el ancho en bytes de la imagen, screen, etc, tomamos el m'odulo de dicho resultado y a 4 le restamos ese m'odulo. 
+\end{itemize}
+
+\subsubsection{Blit}
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta} 
+\subitem En la versi'on de la funci'on que entregamos, se encuentra una secuencia de instrucciones para obtener una m'ascara de 16 bytes en un registro, con el color \textit{RGB} pasado como par'ametro repetido, para poder trabajar con el mismo. En la primera versi'on de esta funci'on, esta secuencia de instrucciones no exist'ia, en su lugar, ten'iamos una m'ascara definida como constante, hecha por nosotros, de manera que nos ahorr'abamos instrucciones. Optamos por modificar esto, debido a que creemos que lo esperado es que se trabaje con el par'ametro, de manera que sea lo m'as gen'erico posible el c'odigo, en lugar de aprovechar el hecho de que sabemos cu'al es el color de fondo.
+\item \textbf{Funciones y/o variables externas que utiliza} 
+\subitem Variables globales: screen\_pixeles.
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales 
+\subitem En \textit{ancho\_screen\_bytes} guardamos el ancho de la pantalla en bytes.
+\subitem \textit{cont\_alt} lo utilizamos para recorrer el sprite por filas y \textit{cont\_anc} para recorrerlo por columnas.
+\subitem \textit{ancho\_sprite\_bytes} es el tamaño de ancho del sprite medido en bytes..
+\subitem \textit{basura} es la cantidad de bytes que deben ocuparse con datos inv'alidos en la memoria, para completar una celda cuando el dato no la ocupa entera.
+\subitem \textit{rgb} es el color pasado como par'ametro.
+
+
+\item Registros de prop'osito general 
+\subitem \textit{eax} y \textit{ebx} los utilizamos como auxiliares.
+\subitem \textit{edx} lo utilizamos como registro auxiliar, y para iterar en el ciclo en el cual se copian los 'ultimos bytes que faltan al final de cada fila.
+\subitem En \textit{edi} tenemos el puntero a pantalla.
+\subitem En \textit{esi} guardamos el puntero al sprite.
+
+\item Registros utilizados por el set de instrucciones \textit{SSE}
+\subitem \textit{xmm0} lo utilizamos para guardar los pixeles del sprite.
+\subitem En \textit{xmm1} guardamos los pixeles de la pantalla, y luego todos los pixeles que deben ser copiados.
+\subitem En \textit{xmm4} guardamos la m'ascara con el color \textit{RGB}.
+\subitem \textit{xmm2}, \textit{xmm3}, \textit{xmm5}, \textit{xmm6}, y \textit{xmm7} son registros auxiliares.
+\end{itemize}
+
+\item \textbf{Funcionamiento} 
+\subitem En esta funci'on colocamos el puntero a pantalla en la posici'on donde comienza el sprite, y comenzamos a recorrer con ambos punteros (el sprite y el de la pantalla), obteniendo de la pantalla tres pixeles para luego almacenarlos en el sprite si es que los mismos eran iguales al color rgb pasado como par'ametro (\emph{color-off}). Para esto utilizamos una m'ascara, y la instrucci'on \textit{pcmpeqd}. Esta instrucci'on compara cada una de las doubleword de los registros, y si son iguales setea esa doubleword en el registro destino con F, y sino con 0. De esta forma, nos quedamos con los pixeles que deben ser modificados seteados en F. Luego hacemos un and con este registro y los pixeles del fondo, de manera que queden guardados los que deben ser copiados. Lo siguiente es comparar el registro en el que ten'iamos F y 0, con un registro seteado todo en 0, para obtener asi F en las doubleword que quiero que permanezca la imagen del sprite. De la misma forma que antes, se hace un and con este registro, y luego mediante la instrucci'on \textit{por} obtenemos en un mismo registro todos los pixeles que deben ser copiados en la memoria.
+\subitem Para trabajar con los pixeles, primero los separamos a cada uno en una doubleword, y luego los volvimos a ubicar en las posiciones que correspond'ian. Luego de reubicarlos, mediante la instrucci'on \textit{por} copiamos los 4 bytes que no procesamos, para no perderlos y tenerlos en la pr'oxima iteraci'on.
+\subitem Para llegar a la posici'on desde donde tomamos datos de screen consideramos 2 cosas: primero que el puntero a pantalla se posiciona en la esquina superior izquierda de la pantalla y segundo, que una vez que terminamos un ciclo de columnas simplemente nos movemos hasta el mismo punto anterior pero en la fila de abajo. Los c'alculos se corresponden con esto: multiplicamos la cantidad de filas para llegar a la posici'on inicial por la cantidad de bytes en una fila (con la basura correspondiente). 
+
+
+\item \textbf{C'odigo}
+\begin{lstlisting}[frame=single]
+ACA VA EL CODIGO
+\end{lstlisting}
+
+
+\subsubsection{Generar\_fondo} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Este algoritmo no trajo ninguna dificultad en particular despu'es de haber entendido como tratar la basura de la imagen al final de cada fila.
+\item \textbf{Funciones y/o variables externas que utiliza}
+\subitem Variables globales: \textit{screen\_pixeles}
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{ancho\_fondo\_bytes} es el ancho de la imagen de fondo en bytes.
+\subitem \textit{cont\_alt} y \textit{cont\_anc} los usamos para iterar en el ciclo.
+\subitem Registros de prop'osito general
+\subitem \textit{eax}, \textit{edx}, \textit{esi} y \textit{edi} se comportan como variables. 
+\subitem \textit{ebx} es el puntero a la imagen de fondo.
+\subitem \textit{ecx} es el puntero a la pantalla.
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem Se calculan los 'indices para avanzar por los ciclos. Se lee de a 4 bytes la imagen de fondo y se escribe tambi'en de a 4 bytes en pantalla.
+
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+
+\end{lstlisting}
+
+
+\subsubsection{Recortar} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Decidimos ver esta funci'on como 2 funciones para poder introducir la optimizaci'on de lectura/escritura. En una primera parte se recorre la imagen en un sentido y en la segundo parte de forma inversa. Si bien la primera parte result'o relativamente simple (era muy similar a la funci'on generar\_fondo), la segunda parte involucraba m'as cuidado a la hora de movernos por el sprite ya que ten'iamos que trabajar con pixeles individuales (3 bytes) y no levantar partes de memoria de 4 bytes como hac'iamos en la primera parte.
+\item \textbf{Funciones y/o variables externas que utiliza}
+\subitem Ninguna
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{ancho\_sprite} es el ancho del sprite
+\subitem \textit{cont\_alt} y \textit{cont\_anc} los utilizamos para iterar en los ciclos. 
+\subitem \textit{ancho\_inst} es el ancho de cada instancia.
+\subitem \textit{resto} es la basura con la que se completa la imagen.
+\subitem \textit{ancho\_sprite\_sin\_basura} es el ancho del sprite en bytes, es decir el ancho * 3
+\item Registros de prop'osito general
+\subitem Con \textit{esi} en el ciclo se recorren las columnas del sprite
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem 
+
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+
+\end{lstlisting}
+
+
+\subsubsection{Generar\_plasma} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Al igual que en la primera entrega, tuvimos que tener en cuenta en qu'e orden se guardaban los colores RGB en la memoria.
+\subitem Para optimizar el c'odigo, hicimos una secuencia de instrucciones que saltea todos los casos si los pixeles que levantamos de la memoria no se corresponde ninguno con el color RGB, de manera que simplemente pasa al siguiente ciclo.
+\item \textbf{Funciones y/o variables externas que utiliza}
+\subitem Variables globales: \textit{screen\_pixeles}, \textit{colores}, \textit{g\_ver0}, \textit{g\_ver1},  \textit{g\_hor0}, \textit{g\_hor1}.
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{j} e \textit{i} son los 'indices que utilizamos para identificar cada pixel.
+\subitem \textit{basura:} es la basura de la imagen de fondo (la cantidad de bytes necesarios para completar la alineaci'on de la memoria a 4 bytes).
+\subitem \textit{itAncho} e \textit{itAlto} los usamos para iterar en los ciclos por ancho y alto respectivamente.
+
+\item Registros de prop'osito general
+\subitem \textit{eax}, \textit{ebx} y \textit{edx} son registros auxiliares. 
+\subitem \textit{esi} es el puntero a la pantalla.
+\subitem \textit{edi} es el puntero al array de colores.
+
+\item Registros utilizados por el set de instrucciones \textit{SSE}
+\subitem En \textit{xmm2} tenemos los index.
+\subitem En \textit{xmm1} tenemos los pixeles que debemos modificar seteados en F (cada doubleword).
+\subitem En \textit{xmm0} tenemos los pixeles que no vamos a modificar.
+\subitem En \textit{xmm4} guardamos la m'ascara del caso anterior, para poder comparar con menor o igual, utilizando la instrucci'on \textit{pandn}
+\subitem En \textit{xmm6} quedan los pixeles modificados, pero desplazados.
+
+
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem El pseudoc'odigo de esta funci'on nos fue dado por la c'atedra, de forma que no ser'a expuesto aqu'i.
+\subitem En esta funci'on procesamos de a 12 bytes, es decir de a 4 pixeles. Lo que hacemos es lo siguiente: Obtenemos los pixeles de la pantalla, los ordenamos de modo que queden uno en cada doubleword, los comparamos con el color RGB pasado como par'ametro, y luego de esta comparaci'on tenemos un registro con doublewords seteadas en F que son los pixeles a modificar. Guardamos los pixeles que no se deben modificar, para luego cargarlos. Mediante las secuencias de instrucciones que comparan al registro que contiene a los index con los distintos valores, se va completando el registro con todos los pixeles modificados. Al final se reestablecen los pixeles a sus posiciones correspondientes, y se cargan en memoria. 
+\subitem La manera en la que cargamos en memoria tiene que ver con que tuvimos en cuenta el hecho de que podemos escribir o leer de posiciones inv'alidas, de esta forma evitamos tener ese problema.
+
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+
+\end{lstlisting}
+	
+
+\subsubsection{Smooth} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+
+NO ERA MI INTENCION QUE QUEDE ASI ESTO, MARTIN SI PODES VOS QUE SABES MAS LATEX QUE YO FIJATE QUE HICE PORQUE ADEMAS EN ALGUNOS ME QUEDARON COMO ITEMS 1) 2) Y EN OTROS A)B) 
+
+
+\subitem Utilizamos una funci'on que llamamos cuentaByN, en la que se compara cada doubleword de un registro con el color negro, y de acuerdo al resultado se incrementa el contador de negros o blancos. Decidimos dejar esta funci'on en el c'odigo escrita una sola vez, debido a que el funcionamiento era el mismo siempre. No la dejamos en un archivo aparte ya que era m'as simple hacerla de esta forma, porque incrementa directamente los contadores que tenemos como variables locales.
+
+\item \textbf{Funciones y/o variables externas que utiliza}
+\subitem Variables globales: \textit{screen\_pixeles}
+
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{anchoEnBytes} es el ancho del screen, en bytes (ancho * 3).
+\subitem \textit(contAncho) y \textit{contAlto} tenemos los iteradores para ciclar a lo ancho y alto respectivamente.
+\subitem \textit{contNegros} y \textit{contBlancos} son los contadores de pixeles negros y no negros respectivamente.
+
+\item Registros de prop'osito general
+\subitem \textit{eax}, \textit{ebx} y \textit{edx} son registros auxiliares.
+\subitem \textit{ecx} lo utilizamos para iterar en la funci'on auxiliar. 
+\subitem \textit{esi} es el puntero a la pantalla.
+
+\item Registros utilizados por el set de instrucciones \textit{SSE}
+\subitem No tenemos fijos los registros para un uso espec'ifico, los datos se van moviendo en los distintos registros a medida que se procesan. S'i podemos decir que en general, al final el registro \textit{xmm1} contiene los pixeles modificados para cargar en memoria.
+
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem El pseudoc'odigo de esta funci'on nos fue dado por la c'atedra, de forma que no ser'a expuesto aqu'i.
+\subitem Procesamos de a 16 bytes.
+\subitem La idea de esta funci'on fue obtener los pixeles de la pantalla, compararlos con el color negro y de acuerdo a esta comparaci'on incrementar los contadores. Luego calcular en paralelo la cuenta (superior + inferior + siguiente + anterior)/4, y asignarle la misma a cada uno de los bytes.
+
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+
+\end{lstlisting}
+	
+	
+\subsubsection{Negative} 
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta}
+\subitem Al igual que en la funci'on \textit{Smooth} consideramos 9 casos en total:
+
+
+
+\item \textbf{Funciones y/o variables externas que utiliza}
+\subitem Variables globales: \textit{screen\_pixeles}
+
+\item \textbf{Registros y variables locales utilizadas}
+\begin{itemize}
+\item Variables locales
+\subitem \textit{anchoEnBytes} es el ancho del screen, en bytes (ancho * 3).
+\subitem \textit(contAncho) y \textit{contAlto} tenemos los iteradores para ciclar a lo ancho y alto respectivamente.
+
+\item Registros de prop'osito general
+\subitem \textit{eax}, \textit{ebx} y \textit{edx} son registros auxiliares. 
+\subitem \textit{esi} es el puntero a la pantalla.
+
+
+\item Registros utilizados por el set de instrucciones \textit{SSE}
+\subitem En general, utilizamos los registros \textit{xmm1}, \textit{xmm2}, \textit{xmm5}, y \textit{xmm7} para procesar los pixeles, y al final el registro \textit{xmm1} es el que contiene todos los pixeles modificados para cargar en memoria.
+
+
+\end{itemize}
+\item \textbf{Funcionamiento} 
+\subitem El pseudoc'odigo de esta funci'on nos fue dado por la c'atedra, de forma que no ser'a expuesto aqu'i.
+\subitem En primer lugar obtenemos los pixeles de la pantalla, (inferiores, superiores, anteriores, y siguientes), y luego debido a las restricciones de las instrucciones, debemos desempaquetar los mismos para poder usarlas y poder trabajar en paralelo con los datos. Al final volvemos a empaquetar, y luego cargamos los pixeles modificados en la memoria. 
+
+
+\item \textbf{C'odigo}
+\end{enumerate}
+\begin{lstlisting}[frame=single]
+
+\end{lstlisting}
+		
+	
+
+
+
+
+
+
+
+\section{Resultados}
+
+\subsection{Dificultades}
+En el transcurso de este trabajo tuvimos diferentes dificultades que creemos necesarias mencionar:
+\begin{enumerate}
+\item \textbf{En la funci'on recortar}
+\begin{itemize}
+\item El problema que tuvimos con esta funci'on fue que luego de copiar los 'ultimos pixeles utilizando \textit{IA-32}, los punteros nos quedaban corridos, esto fue solucionado volviendo a correr los punteros a su lugar, al final de este ciclo.
+\item Otro problema que tuvimos (al igual que en la funci'on \textit{generar\_fondo}) fue que luego de unos segundos de estar corriendo el programa, ocurr'ia un error de memoria. Esto se deb'ia a que como dijimos anteriormente, pod'iamos estar escribiendo en lugares inv'alidos de la memoria por escribir de a m'as de 4 bytes. Esto fue solucionado modificando la cuenta de los iteradores. 
+
+VER ESTOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO 
+
+\subsection{Comparaciones con \textit{IA-32}}
+
+ACA VAN LOS TIEMPOS DE CADA UNA PARA CADA IMPLEMENTACION
+
+\begin{tabular}[t]{|l|l|l|}
+\hline
+\textbf{Funci'on} & \textbf{IA-32} & \textbf{SSE} \\
+\hline 
+\hline
+Generar\_plasma  &  &  \\
+\hline
+Generar\_fondo  &  &  \\
+\hline
+Recortar  &  &  \\
+\hline
+Blit  &  &  \\
+\hline
+Negative  & No implementada &  \\
+\hline
+Smooth  & No implementada &  \\
+\hline
+\end{tabular}
+
+\end{itemize}
+
+
+\section{Conclusiones}
+\item Luego de tomar los tiempos del cpu para cada implementaci'on, nos dimos cuenta de que......
+
+
+
+\end{document}
