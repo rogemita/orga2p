@@ -194,7 +194,7 @@
 	pxor	xmm6, xmm6
 	packuswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
-	pslldq	xmm5, 8
+	pslldq	xmm5, 1
 	movdqu	xmm6, [eax]
 	por	xmm5, xmm6
 	movdqu	[eax], xmm5		;copio los pixeles
