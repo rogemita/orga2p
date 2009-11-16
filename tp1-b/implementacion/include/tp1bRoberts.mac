@@ -54,8 +54,8 @@
 	psubusw		xmm6, xmm7
 
 	packuswb	xmm6, xmm6
-	psllq		xmm6, 1		;limpio el byte más alto pues no tiene dato valido
-	psrlq		xmm6, 1
+ 	psllq		xmm6, 8		;limpio el byte más alto pues no tiene dato valido
+ 	psrlq		xmm6, 8
 
 	movdqu		xmm7, [eax]
 	por		xmm6, xmm7

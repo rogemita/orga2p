@@ -31,7 +31,7 @@ GFLAGS = -c -Wall $(SVNDEF) $(OSDEF) $(INCLUDES)
 LDFLAGS = 
 
 SOURCES = bordes.c
-ASMSOURCES = sobel.asm roberts.asm
+ASMSOURCES = sobel.asm roberts.asm freiChen.asm
 
 ASMOBJECTS = $(ASMSOURCES:.asm=.o)
 OBJECTS = $(SOURCES:.c=.o)

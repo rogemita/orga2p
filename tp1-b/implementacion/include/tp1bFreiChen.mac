@@ -1,11 +1,7 @@
 %define REMAINDER	[ebp - 4]
-%define MASK_HI3	[ebp - 8]
-%define MASK_HI2	[ebp - 12]
-%define MASK_HI		[ebp - 16]
-%define MASK_LO		[ebp - 20]
 %define	STEP_X		14
 %define	STEP_Y		14
-%define RESERVED_BYTES	20
+%define RESERVED_BYTES	4
 
 ;========================
 ; MACRO obtenerBajo
@@ -18,201 +14,257 @@
 ;	offset		indica si debe desplazar el dato original
 ;========================
 %macro obtenerBajo 2-3 0
-	movntpd		%1, %2		;copio el dato
+	movdqu		%1, %2		;copio el dato
 %if %3 != 0
 	psrldq		%1, %3		;desplazo dos columnas
 %endif
 	punpcklbw	%1, %1		;desempaqueto la parte baja
 	psllw		%1, 8		;retiro el excedente alto
 	psrlw		%1, 8
+	cvtdq2ps	%1, %1		;convierto a precision simple
 %endmacro
 
 %macro obtenerAlto 2-3 0
-	movntpd		%1, %2		;copio el dato
+	movdqu		%1, %2		;copio el dato
 %if %3 != 0
 	psrldq		%1, %3		;desplazo dos columnas
 %endif
 	punpckhbw	%1, %1		;desempaqueto la parte baja
 	psllw		%1, 8		;retiro el excedente alto
 	psrlw		%1, 8
+	cvtdq2ps	%1, %1		;convierto a precision simple
 %endmacro      
 
 ;========================
-; MACRO sobelPrewittX
+; MACRO cargarRaiz2
 ;========================
-; Cuerpo de codigo que aplica los operadores de Sobel y Prewitt en el orden x
+; Carga raiz de dos en el registro xmm7
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;========================
+%macro cargarRaiz2 1
+ 	movq2dq		%1, mm7		;copio la raiz en precision doble
+	pshufd		%1, %1, 0x00 	;copio el mas bajo a todos los dword
+%endmacro
+;========================
+; MACRO freichenX
+;========================
+; Cuerpo de codigo que aplica el operador de freichen en el orden x
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;	registro2
 ;	registro3
-;	duplica?	debe duplicar el valor del primer registro?
 ;	procesaAmbos	indica si debe procesar el dato bajo y el alto
 ;========================
-%macro	sobelPrewittX 4-5 0
+%macro	freiChenX 3-4 0
 	;**************************
 	; VOY A APLICAR EL OPERADOR
 	; EN LA PARTE BAJA
 	;**************************
-	obtenerBajo	xmm6, %2, 16	;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		xmm6, 1		;multiplico por dos
-%endif
-	obtenerBajo	xmm7, %1, 16	;obtengo los bajos de la primera fila
-	paddusw		xmm6, xmm7	;sumo saturado
-	obtenerBajo	xmm7, %3, 16	;obtengo los bajos de la tercera fila
-	paddusw		xmm6, xmm7	;sumo saturado
+	cargarRaiz2	xmm7
+	obtenerBajo	xmm6, %2, 2	;obtengo los bajos de la segunda fila
+	mulps		xmm6, xmm7
 
-	obtenerBajo	xmm7, %2	;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		xmm7, 1		;multiplico por dos
-%endif
-	psubusw		xmm6, xmm7
+	obtenerBajo	xmm7, %1, 2	;obtengo los bajos de la primera fila
+	addps		xmm6, xmm7	;sumo saturado
+	obtenerBajo	xmm7, %3, 2	;obtengo los bajos de la tercera fila
+	addps		xmm6, xmm7	;sumo saturado
+
 	obtenerBajo	xmm7, %1	;obtengo los bajos de la primera fila
-	psubusw		xmm6, xmm7	;sumo saturado
+	subps		xmm6, xmm7	;sumo saturado
 	obtenerBajo	xmm7, %3	;obtengo los bajos de la tercera fila
-	psubusw		xmm6, xmm7	;sumo saturado
-
+	subps		xmm6, xmm7	;sumo saturado
+					;aca estoy usando un truco que es dividir todo menos un item por raiz de dos
+					;sumar el item y multiplicar todo por raiz de dos, i.e: (((a+b+c-d-f)/ 2^(.5))-e*2^(.5))
+	cargarRaiz2	xmm7
+	divps		xmm6, xmm7
+	obtenerBajo	xmm7, %2	;obtengo los bajos de la segunda fila
+	psubusw		xmm6, xmm7
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
 	;************************
 	; TERMINE COPIO A DESTINO
 	;************************
+	cvttps2dq	xmm6, xmm6
 	packuswb	xmm6, xmm6
 	movq		[eax], xmm6	;copio los 8 bytes al destino
-	
-%if %5 = 0
+%if %4 = 0
 	add		eax, 8		;salto la linea siguiente
-	
 	;**************************
 	; VOY A APLICAR EL OPERADOR
 	; EN LA PARTE ALTA
 	;**************************	
-	obtenerAlto	xmm6, %2, 16	;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		xmm6, 1		;multiplico por dos
-%endif
-	obtenerAlto	xmm7, %1, 16	;obtengo los bajos de la primera fila
-	paddusw		xmm6, xmm7	;sumo saturado
-	obtenerAlto	xmm7, %3, 16	;obtengo los bajos de la tercera fila
-	paddusw		xmm6, xmm7	;sumo saturado
+	cargarRaiz2	xmm7
+	obtenerAlto	xmm6, %2, 2	;obtengo los bajos de la segunda fila
+	mulps		xmm6, xmm7
 
-	obtenerAlto	xmm7, %2	;obtengo los bajos de la segunda fila
-%if %4 = 0
-	psllw		xmm7, 1		;multiplico por dos
-%endif
-	psubusw		xmm6, xmm7
+	obtenerAlto	xmm7, %1, 2	;obtengo los bajos de la primera fila
+	addps		xmm6, xmm7	;sumo saturado
+	obtenerAlto	xmm7, %3, 2	;obtengo los bajos de la tercera fila
+	addps		xmm6, xmm7	;sumo saturado
+
 	obtenerAlto	xmm7, %1	;obtengo los bajos de la primera fila
-	psubusw		xmm6, xmm7	;sumo saturado
+	subps		xmm6, xmm7	;sumo saturado
 	obtenerAlto	xmm7, %3	;obtengo los bajos de la tercera fila
-	psubusw		xmm6, xmm7	;sumo saturado
+	subps		xmm6, xmm7	;sumo saturado
 
+					;aca estoy usando un truco que es dividir todo menos un item por raiz de dos
+					;sumar el item y multiplicar todo por raiz de dos, i.e: (((a+b+c-d-f)/ 2^(.5))-e*2^(.5))
+	cargarRaiz2	xmm7
+	divps		xmm6, xmm7
+	obtenerAlto	xmm7, %2	;obtengo los bajos de la segunda fila
+	psubusw		xmm6, xmm7
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
 	;************************
 	; TERMINE COPIO A DESTINO
 	;************************
+	cvttps2dq	xmm6, xmm6
 	packuswb	xmm6, xmm6
-	movq		[eax], xmm6	;copio los 4 bytes al destino de los cuales 2 son validos
+	movq		[eax], xmm6	;copio los 8 bytes al destino
 	sub		eax, 8
 %endif
 	add		eax, edx	;salto la linea siguiente
 %endmacro
 
 ;========================
-; MACRO sobelPrewittY
+; MACRO armarMascara
 ;========================
-; Cuerpo de codigo que aplica los operadores de Sobel y Prewitt en el orden x
+; Arma la mascara para seleccionar pixeles pares o impares
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;========================
+%macro armarMascara 1
+	pxor	%1, %1		;limpio B
+	pcmpeqb	%1, %1		;armo la mascara, paso todo a uno
+	psllw	%1, 8
+	psrlw	%1, 8		;meto ceros intercalados de a byte
+	psrldq	%1, 2		;paso el último word a cero
+	pslldq	%1, 2
+%endmacro
+;========================
+; MACRO freichenY
+;========================
+; Cuerpo de codigo que aplica el operador de freichen en el orden y
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;	registro2
-;	duplica?	debe duplicar el valor del primer registro?
-;	procesaAmbos	indica si debe procesar el dato bajo y el alto
 ;========================
-%macro	sobelPrewittY 2-3 0
+%macro	freiChenY 2
 	;**********************
 	; PROCESO PIXEL 2,4,6,8
 	;**********************
-	movntpd	xmm5, %1		;cargo el primer registro y enmascaro para pasar a word
-	pand	xmm5, xmm7
-	movntpd	xmm6, %1		;cargo y me quedo con el pixel una a derecha
-	pslldq	xmm6, 8
-	pand	xmm6, xmm7
-%if %3 = 0
-	psllw	xmm6, 1			;multiplico por dos
-%endif
-	paddusw	xmm5, xmm6		;sumo el segundo pixel
-	movntpd	xmm6, %1
-	pslldq	xmm6, 16		;cargo y me quedo con el pixel dos a derecha
-	pand	xmm6, xmm7
-	paddusw	xmm5, xmm6		; ya tengo acumulado en mm5 la parte positiva de los pixeles, 2, 4, 6, 8
+	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
+	armarMascara	xmm7
+	pand		xmm5, xmm7
+	cvtdq2ps	xmm5, xmm5			;convierto a precision simple
+	
+	movdqu		xmm6, %1
+	pslldq		xmm6, 2				;cargo y me quedo con el pixel dos a derecha
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6
 
-	movntpd	xmm6, %2
-	pand	xmm6, xmm7
-	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
-	pslldq	xmm6, 8
-	pand	xmm6, xmm7
-%if %3 = 0
-	psllw	xmm6, 1			;multiplico por dos
-%endif	
-	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
-	pslldq	xmm6, 16		;cargo y me quedo con el pixel dos a derecha
-	pand	xmm6, xmm7
-	psubusw	xmm5, xmm6		; ya el operador aplicado en mm5 a los pixeles, 2, 4, 6, 8
-	pxor	xmm6, xmm6
+	movdqu		xmm6, %2
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6
+
+	movdqu		xmm6, %2
+	pslldq		xmm6, 2			;cargo y me quedo con el pixel dos a derecha
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6		; ya el operador aplicado en xmm5 a los pixeles, 2, 4, 6, 8
+
+
+	movdqu		xmm6, %1			;cargo y me quedo con el pixel una a derecha
+	pslldq		xmm6, 1
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6			;lo mismo enmascaro y convierto a precision simple luego de desplazar
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7		
+	addps		xmm5, xmm6			;multiplico por raiz de dos y acumulo
+
+      
+	movdqu		xmm6, %2
+	pslldq		xmm6, 1
+	armarMascara	xmm7
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
+	subps		xmm5, xmm6
+
+	cvttps2dq	xmm5, xmm5
+	pxor		xmm6, xmm6
 	packuswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
-	por	xmm5, [eax]
-	movntpd	[eax], xmm5		;copio los pixeles
+	movdqu		xmm6, [eax]
+	por		xmm5, xmm6
+	movdqu		[eax], xmm5		;copio los pixeles
 
 	;**********************
 	; PROCESO PIXEL 1,3,5
 	;**********************
-	movntpd	xmm5, %1		;cargo el primer registro y enmascaro para pasar a word
-	psrldq	xmm5, 8
-	pand	xmm5, xmm7
-	movntpd	xmm6, %1		;cargo y me quedo con el pixel una a derecha
-	pand	xmm6, xmm7
-%if %3 = 0
-	psllw	xmm6, 1			;multiplico por dos
-%endif
-	paddusw	xmm5, xmm6		;sumo el segundo pixel
-	movntpd	xmm6, %1
-	pslldq	xmm6, 8			;cargo y me quedo con el pixel dos a derecha
-	pand	xmm6, xmm7
-	paddusw	xmm5, xmm6		; ya tengo acumulado en mm5 la parte positiva de los pixeles, 1, 3, 5
+	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
+	psrldq		xmm5, 1
+	armarMascara	xmm7
+	pand		xmm5, xmm7
+	cvtdq2ps	xmm5, xmm5			;convierto a precision simple
+	
+	movdqu		xmm6, %1
+	pslldq		xmm6, 1				;cargo y me quedo con el pixel dos a derecha
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6
 
-	movntpd	xmm6, %2
-	psrldq	xmm6, 8
-	pand	xmm6, xmm7
-	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
-	pand	xmm6, xmm7
-%if %3 = 0
-	psllw	xmm6, 1			;multiplico por dos
-%endif	
-	psubusw	xmm5, xmm6
-	movntpd	xmm6, %2
-	pslldq	xmm6, 8			;cargo y me quedo con el pixel dos a derecha
-	pand	xmm6, xmm7
-	psubusw	xmm5, xmm6		; ya el operador aplicado en mm5 a los pixeles, 2, 4, 6, 8
+	movdqu		xmm6, %2
+	psrldq		xmm6, 1
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6
 
-	pxor	xmm6, xmm6
+	movdqu		xmm6, %2
+	pslldq		xmm6, 1
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6		; ya el operador aplicado en xmm5 a los pixeles, 2, 4, 6, 8
+
+
+	movdqu		xmm6, %1			;cargo y me quedo con el pixel una a derecha
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6			;lo mismo enmascaro y convierto a precision simple luego de desplazar
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7		
+	addps		xmm5, xmm6			;multiplico por raiz de dos y acumulo
+
+      
+	movdqu		xmm6, %2
+	armarMascara	xmm7
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
+	subps		xmm5, xmm6
+
+	cvttps2dq	xmm5, xmm5
+	pxor		xmm6, xmm6
 	packuswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
-	pslldq	xmm5, 8
-	por	xmm5, [eax]
-	movntpd	[eax], xmm5		;copio los pixeles
+	movdqu		xmm6, [eax]
+	por		xmm5, xmm6
+	movdqu		[eax], xmm5		;copio los pixeles
 
-	add	eax, edx		;salto la linea siguiente
+	add		eax, edx	;salto la linea siguiente
 %endmacro
 
 
 ;========================
-; MACRO sobelPrewitt
+; MACRO freiChen
 ;========================
-; Cuerpo de codigo que aplica los operadores de Sobel y Prewitt
-; Entrada:
-;	esSobel		marca si es sobel o no
+; Cuerpo de codigo que aplica el operador de FreiChen
 ;========================
-%macro sobelPrewitt 1
+%macro freiChen 0
 	doEnter RESERVED_BYTES
 
 
@@ -236,6 +288,20 @@
 
 	mov	ebx, HEIGHT		;va a ser mi variable de altura
 	
+	
+	pcmpeqb	xmm0, xmm0
+	psrld	xmm0, 31
+	pslld	xmm0, 1
+	cvtdq2ps	xmm0, xmm0
+	sqrtps	xmm0, xmm0
+	movdq2q	mm7, xmm0
+	
+; 	finit
+; 	fld1
+; 	fld1
+; 	faddp
+;  	fsqrt				;consigo la raiz de dos en st0
+
 	mov	eax, XORDER
 
 	cmp	eax, 0
@@ -246,32 +312,33 @@
 %%cicloSX_y:
 	xor	ecx, ecx
 %%cicloSX_x:
- 	pxor	mm6, mm6		;limpio A
-	pxor	mm7, mm7		;limpio B
+ 	pxor	xmm6, xmm6		;limpio A
+	pxor	xmm7, xmm7		;limpio B
 
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm5, [edi + eax]		
+	movdqu	xmm5, [edi + eax]		
 		
 	mov	eax, esi
 
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	sobelPrewittX mm0, mm1, mm2, %1
-	sobelPrewittX mm1, mm2, mm3, %1
-	sobelPrewittX mm2, mm3, mm4, %1
-	sobelPrewittX mm3, mm4, mm5, %1
+	freiChenX xmm0, xmm1, xmm2
+	freiChenX xmm1, xmm2, xmm3
+	freiChenX xmm2, xmm3, xmm4
+	freiChenX xmm3, xmm4, xmm5
+
 
 	add 	esi, STEP_X		
 	add	edi, STEP_X
@@ -295,24 +362,25 @@
 
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm5, [edi + eax]
+	movdqu	xmm5, [edi + eax]
 
 	mov	eax, esi
 
-	sobelPrewittX mm0, mm1, mm2, %1, 1
-	sobelPrewittX mm1, mm2, mm3, %1, 1
-	sobelPrewittX mm2, mm3, mm4, %1, 1
-	sobelPrewittX mm3, mm4, mm5, %1, 1
+	freiChenX xmm0, xmm1, xmm2, 1
+	freiChenX xmm1, xmm2, xmm3, 1
+	freiChenX xmm2, xmm3, xmm4, 1
+	freiChenX xmm3, xmm4, xmm5, 1
+
 
 	add	esi, 2
 	add	edi, 2
@@ -362,35 +430,29 @@
 
 	mov	ebx, HEIGHT		;va a ser mi variable de altura
 
-	pxor	mm7, mm7		;limpio B
-	mov	dword MASK_LO, 0x00FF0000	;OJO ACA que estoy borrando este byte por el tema del or a destino para no procesar basura
-	mov	dword MASK_HI, 0x00FF00FF
-
 %%cicloSY_y:
 	xor	ecx, ecx
 %%cicloSY_x:
-	movq	mm7, MASK_LO
-
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 		
 	mov	eax, esi
 
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	sobelPrewittY mm2, mm0, %1
-	sobelPrewittY mm3, mm1, %1
-	sobelPrewittY mm4, mm2, %1
+	freiChenY xmm2, xmm0
+	freiChenY xmm3, xmm1
+	freiChenY xmm4, xmm2
 
 	add 	esi, STEP_Y		
 	add	edi, STEP_Y
@@ -415,21 +477,21 @@
 
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 		
 	mov	eax, esi
 
-	sobelPrewittY mm2, mm0, %1
-	sobelPrewittY mm3, mm1, %1
-	sobelPrewittY mm4, mm2, %1
+	freiChenY xmm2, xmm0
+	freiChenY xmm3, xmm1
+	freiChenY xmm4, xmm2
 
 	add	esi, 2
 	add	edi, 2
