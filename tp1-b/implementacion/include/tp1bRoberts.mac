@@ -1,5 +1,5 @@
 %define REMAINDER	[ebp - 4]
-%define	STEP_X		7
+%define	STEP_X		15		
 %define RESERVED_BYTES	0
 
 
@@ -14,56 +14,53 @@
 ;========================
 %macro	robertsXY 3
 	;procesamos la parte baja
-	movq		mm7, %2
-	movq		mm6, %1
+	movdqu		xmm7, %2
+	movdqu		xmm6, %1
 %if %3 = 0
-	psrlq		mm6, 8		;desplazo para hacer la aritmetica
+	psrldq		xmm6, 1		;desplazo para hacer la aritmetica
 %else
-	psrlq		mm7, 8
+	psrldq		xmm7, 1
 %endif
-	punpcklbw	mm7, mm7
-	psllw		mm7, 8		;limpio la parte alta del word
-	psrlw		mm7, 8
-	punpcklbw	mm6, mm6
-	psllw		mm6, 8		;limpio la parte alta del word
-	psrlw		mm6, 8
-	psubusw		mm6, mm7
+	punpcklbw	xmm7, xmm7
+	psllw		xmm7, 8		;limpio la parte alta del word
+	psrlw		xmm7, 8
+	punpcklbw	xmm6, xmm6
+	psllw		xmm6, 8		;limpio la parte alta del word
+	psrlw		xmm6, 8
+	psubusw		xmm6, xmm7
 
-	packuswb	mm6, mm6
+	packuswb	xmm6, xmm6
 	
-	por		mm6, [eax]
-	movd		[eax], mm6	;copio los 4 bytes al destino
+	movdqu		xmm7, [eax]
+	por		xmm6, xmm7
+	movq		[eax], xmm6	;copio los 4 bytes al destino
 	
-	add		eax, 4		;paso a los proximos cuatro bytes
+	add		eax, 8		;paso a los proximos cuatro bytes
 
 	;procesamos la parte alta
-	movq		mm7, %2
-	movq		mm6, %1
+	movdqu		xmm7, %2
+	movdqu		xmm6, %1
 %if %3 = 0
-	psrlq		mm6, 8
+	psrldq		xmm6, 1
 %else
-	psrlq		mm7, 8
+	psrldq		xmm7, 1
 %endif
-	punpckhbw	mm7, mm7
-	psllw		mm7, 8
-	psrlw		mm7, 8
-	punpckhbw	mm6, mm6
-	psllw		mm6, 8
-	psrlw		mm6, 8
-	psubusw		mm6, mm7
+	punpckhbw	xmm7, xmm7
+	psllw		xmm7, 8
+	psrlw		xmm7, 8
+	punpckhbw	xmm6, xmm6
+	psllw		xmm6, 8
+	psrlw		xmm6, 8
+	psubusw		xmm6, xmm7
 
-;  	psllq		mm7, 16
-; 	psrlq		mm7, 16
-; 	psllq		mm6, 16
-; 	psrlq		mm6, 16
+	packuswb	xmm6, xmm6
+	psllq		xmm6, 1		;limpio el byte más alto pues no tiene dato valido
+	psrlq		xmm6, 1
 
-	packuswb	mm6, mm6
-	pslld		mm6, 8		;limpio el byte más alto pues no tiene dato valido
-	psrld		mm6, 8
-
-	por		mm6, [eax]
-	movd		[eax], mm6	;copio los 4 bytes al destino
-	sub		eax, 4
+	movdqu		xmm7, [eax]
+	por		xmm6, xmm7
+	movq		[eax], xmm6	;copio los 4 bytes al destino
+	sub		eax, 8
 	add		eax, edx	;salto la linea siguiente
 %endmacro
 
@@ -133,17 +130,17 @@
 %%cicloSX_x:
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm5, [edi + eax]		
+	movdqu	xmm5, [edi + eax]		
 	add	eax, edx		;salto una linea
 		
 	mov	eax, esi
@@ -151,11 +148,11 @@
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	robertsX mm0, mm1
-	robertsX mm1, mm2
-	robertsX mm2, mm3
-	robertsX mm3, mm4
-	robertsX mm4, mm5
+	robertsX xmm0, xmm1
+	robertsX xmm1, xmm2
+	robertsX xmm2, xmm3
+	robertsX xmm3, xmm4
+	robertsX xmm4, xmm5
 
 
 	add 	esi, STEP_X		
@@ -180,25 +177,25 @@
 
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm5, [edi + eax]		
+	movdqu	xmm5, [edi + eax]		
 
 	mov	eax, esi
 
-	robertsX mm0, mm1
-	robertsX mm1, mm2
-	robertsX mm2, mm3
-	robertsX mm3, mm4
-	robertsX mm4, mm5
+	robertsX xmm0, xmm1
+	robertsX xmm1, xmm2
+	robertsX xmm2, xmm3
+	robertsX xmm3, xmm4
+	robertsX xmm4, xmm5
 
 	inc	esi
 	inc	edi
@@ -246,17 +243,17 @@
 %%cicloSY_x:
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm5, [edi + eax]		
+	movdqu	xmm5, [edi + eax]		
 	add	eax, edx		;salto una linea
 		
 	mov	eax, esi
@@ -264,11 +261,11 @@
 	;******************************
 	; PROCESO LAS LINEAS QUE CARGUE
 	;******************************
-	robertsY mm0, mm1
-	robertsY mm1, mm2
-	robertsY mm2, mm3
-	robertsY mm3, mm4
-	robertsY mm4, mm5
+	robertsY xmm0, xmm1
+	robertsY xmm1, xmm2
+	robertsY xmm2, xmm3
+	robertsY xmm3, xmm4
+	robertsY xmm4, xmm5
 
 
 	add 	esi, STEP_X		
@@ -293,25 +290,25 @@
 
 	xor	eax, eax		;offset de linea
 
-	movq	mm0, [edi]		;cargo las seis lineas correspondientes
+	movdqu	xmm0, [edi]		;cargo las seis lineas correspondientes
 	add	eax, edx		;salto una linea
-	movq	mm1, [edi + eax]		
+	movdqu	xmm1, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm2, [edi + eax]		
+	movdqu	xmm2, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm3, [edi + eax]		
+	movdqu	xmm3, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm4, [edi + eax]		
+	movdqu	xmm4, [edi + eax]		
 	add	eax, edx		;salto una linea
-	movq	mm5, [edi + eax]		
+	movdqu	xmm5, [edi + eax]		
 
 	mov	eax, esi
 
-	robertsY mm0, mm1
-	robertsY mm1, mm2
-	robertsY mm2, mm3
-	robertsY mm3, mm4
-	robertsY mm4, mm5
+	robertsY xmm0, xmm1
+	robertsY xmm1, xmm2
+	robertsY xmm2, xmm3
+	robertsY xmm3, xmm4
+	robertsY xmm4, xmm5
 
 	inc	esi
 	inc	edi
