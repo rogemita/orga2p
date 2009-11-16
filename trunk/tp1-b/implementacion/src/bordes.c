@@ -8,7 +8,7 @@
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
-	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".BMP", dst_asm);			\
+	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".jpg", dst_asm);			\
 	printf(#OPERATOR #XDERIVATE #YDERIVATE " demoro: %i\n", tscl);
 
 #define testOperatorNoPrint(OPERATOR, XDERIVATE, YDERIVATE)						\
@@ -16,7 +16,7 @@
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
-	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".BMP", dst_asm);			
+	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".jpg", dst_asm);			
 
 #define	CORRIDAS	1
 extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
@@ -33,6 +33,8 @@ int main( int argc, char** argv ){
 	int		tiempos[6][CORRIDAS];
 	long long int	promedios [6];
 	
+	//char* filename = argc == 2 ? argv[1] : (char*)"img/in/test2.bmp";
+	//char* filename = argc == 2 ? argv[1] : (char*)"img/in/lucie12.jpg";
 	char* filename = argc == 2 ? argv[1] : (char*)"img/in/lena-full.jpg";
 	//char* filename = argc == 2 ? argv[1] : (char*)"img/in/lena.bmp";
 
