@@ -22,7 +22,7 @@
 extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmPrewitt(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 extern void asmSobel(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
-//extern void asmFreiChen(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
+extern void asmFreiChen(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
 
 int main( int argc, char** argv ){
 	IplImage * src = 0;
@@ -150,11 +150,10 @@ int main( int argc, char** argv ){
 	testOperator(asmRoberts,1,1);
 
 	//FREI-CHEN
-/*
+
 	testOperator(asmFreiChen,1,0);	
 	testOperator(asmFreiChen,0,1);
 	testOperator(asmFreiChen,1,1);
-*/
 
 
 	cvReleaseData(src);
