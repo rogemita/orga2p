@@ -1,7 +1,5 @@
 MCOPY=mcopy
 
-VPATH =src:out:
-
 KERNEL_SRC=kernel.asm
 KERNEL_OBJ=kernel.o
 KERNEL_BIN=kernel.bin
@@ -25,22 +23,22 @@ LDFLAGS=-static -m elf_i386 --oformat binary -b elf32-i386 -e start -Ttext 0x120
 all: clean image
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o out/$@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
 %.o: %.asm
-	$(NASM) $(NASMFLAGS) -Isrc/ -Isrc/include/ -o out/$@ $^
+	$(NASM) $(NASMFLAGS) -o $@ $^
 
 kernel.bin: $(OBJ)
 	@echo 'Linkeando el kernel...'
-	$(LD) $(LDFLAGS) -o $@ $(addprefix out/, $(+F))
+	$(LD) $(LDFLAGS) -o $@ $^
 	@echo ''
 
 
 image: kernel.bin
 	@echo 'Copiando el $(KERNEL_BIN) a la imagen de diskette\n'
-	@$(MCOPY) -i $(DISK_IMG) $(KERNEL_BIN) ::/ 
+	$(MCOPY) -i $(DISK_IMG) $(KERNEL_BIN) ::/ 
 
 clean:
 	rm -f *.bin
-	rm -f out/*.o
+	rm -f *.o
 
