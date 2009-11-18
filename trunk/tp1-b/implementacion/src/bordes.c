@@ -141,8 +141,8 @@ int main( int argc, char** argv ){
 
 	//PREWITT
 	testOperator(asmPrewitt,1,0);
-	testOperator(asmPrewitt,0,1);
-	testOperator(asmPrewitt,1,1);
+ 	testOperator(asmPrewitt,0,1);
+ 	testOperator(asmPrewitt,1,1);
 
 	//PREWITT
 	testOperator(asmRoberts,1,0);	

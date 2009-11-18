@@ -13,27 +13,31 @@
 ;	registro3
 ;	offset		indica si debe desplazar el dato original
 ;========================
-%macro obtenerBajo 2-3 0
-	movdqu		%1, %2		;copio el dato
-%if %3 != 0
-	psrldq		%1, %3		;desplazo dos columnas
+%macro obtener 3-4 0
+	movdqu		%2, %3		;copio el dato
+%if %4 != 0
+	psrldq		%2, %4		;desplazo dos columnas
 %endif
-	punpcklbw	%1, %1		;desempaqueto la parte baja
-	psllw		%1, 8		;retiro el excedente alto
-	psrlw		%1, 8
-	cvtdq2ps	%1, %1		;convierto a precision simple
+%if %1 = 2
+	punpckhbw	%2, %2		;desempaqueto la parte baja
+%elif %1 = 3
+	punpckhbw	%2, %2		;desempaqueto la parte baja
+%else
+	punpcklbw	%2, %2		;desempaqueto la parte baja
+%endif
+	psllw		%2, 8		;retiro el excedente alto
+	psrlw		%2, 8
+%if %1 = 1
+	punpckhbw	%2, %2		;desempaqueto la parte baja
+%elif %1 = 3
+	punpckhbw	%2, %2		;desempaqueto la parte baja
+%else
+	punpcklbw	%2, %2		;desempaqueto la parte baja
+%endif
+	pslld		%2, 24
+	psrld		%2, 24
+	cvtdq2ps	%2, %2		;convierto a precision simple
 %endmacro
-
-%macro obtenerAlto 2-3 0
-	movdqu		%1, %2		;copio el dato
-%if %3 != 0
-	psrldq		%1, %3		;desplazo dos columnas
-%endif
-	punpckhbw	%1, %1		;desempaqueto la parte baja
-	psllw		%1, 8		;retiro el excedente alto
-	psrlw		%1, 8
-	cvtdq2ps	%1, %1		;convierto a precision simple
-%endmacro      
 
 ;========================
 ; MACRO cargarRaiz2
@@ -44,7 +48,54 @@
 ;========================
 %macro cargarRaiz2 1
  	movq2dq		%1, mm7		;copio la raiz en precision doble
-	pshufd		%1, %1, 0x00 	;copio el mas bajo a todos los dword
+	pshufd		%1, %1, 0x00 	;copio el mas bajo a todos los dword ps
+%endmacro
+
+;========================
+; MACRO aplicarOperador
+;========================
+; Aplicar operador a cuatro bytes
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2	registros sobre los cuales operar 
+;	registro3	registros sobre los cuales operar 
+;========================
+%macro aplicarOperadorX 4-5 0
+	;**************************
+	; VOY A APLICAR EL OPERADOR
+	; EN LA PARTE BAJA
+	;**************************
+	cargarRaiz2	xmm7
+	obtener		%4, xmm6, %2, 2	;obtengo los bajos de la segunda fila
+	mulps		xmm6, xmm7
+
+	obtener 	%4, xmm7, %1, 2	;obtengo los bajos de la primera fila
+	addps		xmm6, xmm7	;sumo saturado
+	obtener		%4, xmm7, %3, 2	;obtengo los bajos de la tercera fila
+	addps		xmm6, xmm7	;sumo saturado
+
+	obtener		%4, xmm7, %1	;obtengo los bajos de la primera fila
+	subps		xmm6, xmm7	;sumo saturado
+	obtener		%4, xmm7, %3	;obtengo los bajos de la tercera fila
+	subps		xmm6, xmm7	;sumo saturado
+					;aca estoy usando un truco que es dividir todo menos un item por raiz de dos
+					;sumar el item y multiplicar todo por raiz de dos, i.e: (((a+b+c-d-f)/ 2^(.5))-e*2^(.5))
+	cargarRaiz2	xmm7
+	divps		xmm6, xmm7
+	obtener		%4, xmm7, %2	;obtengo los bajos de la segunda fila
+	subps		xmm6, xmm7
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
+	;************************
+	; TERMINE COPIO A DESTINO
+	;************************
+	cvttps2dq	xmm6, xmm6
+	packusdw	xmm6, xmm6
+	packuswb	xmm6, xmm6
+	movd		[eax], xmm6	;copio los 4 bytes al destino
+%if %5 = 0
+	add		eax, 4		;salto la linea siguiente
+%endif
 %endmacro
 ;========================
 ; MACRO freichenX
@@ -54,75 +105,16 @@
 ;	registro1	registros sobre los cuales operar 
 ;	registro2
 ;	registro3
-;	procesaAmbos	indica si debe procesar el dato bajo y el alto
+;	procesaAmbos	indica si debe procesar los datos mas altos
 ;========================
 %macro	freiChenX 3-4 0
-	;**************************
-	; VOY A APLICAR EL OPERADOR
-	; EN LA PARTE BAJA
-	;**************************
-	cargarRaiz2	xmm7
-	obtenerBajo	xmm6, %2, 2	;obtengo los bajos de la segunda fila
-	mulps		xmm6, xmm7
 
-	obtenerBajo	xmm7, %1, 2	;obtengo los bajos de la primera fila
-	addps		xmm6, xmm7	;sumo saturado
-	obtenerBajo	xmm7, %3, 2	;obtengo los bajos de la tercera fila
-	addps		xmm6, xmm7	;sumo saturado
-
-	obtenerBajo	xmm7, %1	;obtengo los bajos de la primera fila
-	subps		xmm6, xmm7	;sumo saturado
-	obtenerBajo	xmm7, %3	;obtengo los bajos de la tercera fila
-	subps		xmm6, xmm7	;sumo saturado
-					;aca estoy usando un truco que es dividir todo menos un item por raiz de dos
-					;sumar el item y multiplicar todo por raiz de dos, i.e: (((a+b+c-d-f)/ 2^(.5))-e*2^(.5))
-	cargarRaiz2	xmm7
-	divps		xmm6, xmm7
-	obtenerBajo	xmm7, %2	;obtengo los bajos de la segunda fila
-	psubusw		xmm6, xmm7
-	cargarRaiz2	xmm7
-	mulps		xmm6, xmm7
-	;************************
-	; TERMINE COPIO A DESTINO
-	;************************
-	cvttps2dq	xmm6, xmm6
-	packuswb	xmm6, xmm6
-	movq		[eax], xmm6	;copio los 8 bytes al destino
+	aplicarOperadorX %1, %2, %3, 0
 %if %4 = 0
-	add		eax, 8		;salto la linea siguiente
-	;**************************
-	; VOY A APLICAR EL OPERADOR
-	; EN LA PARTE ALTA
-	;**************************	
-	cargarRaiz2	xmm7
-	obtenerAlto	xmm6, %2, 2	;obtengo los bajos de la segunda fila
-	mulps		xmm6, xmm7
-
-	obtenerAlto	xmm7, %1, 2	;obtengo los bajos de la primera fila
-	addps		xmm6, xmm7	;sumo saturado
-	obtenerAlto	xmm7, %3, 2	;obtengo los bajos de la tercera fila
-	addps		xmm6, xmm7	;sumo saturado
-
-	obtenerAlto	xmm7, %1	;obtengo los bajos de la primera fila
-	subps		xmm6, xmm7	;sumo saturado
-	obtenerAlto	xmm7, %3	;obtengo los bajos de la tercera fila
-	subps		xmm6, xmm7	;sumo saturado
-
-					;aca estoy usando un truco que es dividir todo menos un item por raiz de dos
-					;sumar el item y multiplicar todo por raiz de dos, i.e: (((a+b+c-d-f)/ 2^(.5))-e*2^(.5))
-	cargarRaiz2	xmm7
-	divps		xmm6, xmm7
-	obtenerAlto	xmm7, %2	;obtengo los bajos de la segunda fila
-	psubusw		xmm6, xmm7
-	cargarRaiz2	xmm7
-	mulps		xmm6, xmm7
-	;************************
-	; TERMINE COPIO A DESTINO
-	;************************
-	cvttps2dq	xmm6, xmm6
-	packuswb	xmm6, xmm6
-	movq		[eax], xmm6	;copio los 8 bytes al destino
-	sub		eax, 8
+	aplicarOperadorX %1, %2, %3, 1
+	aplicarOperadorX %1, %2, %3, 2
+	aplicarOperadorX %1, %2, %3, 3, 1
+	sub		eax, 12
 %endif
 	add		eax, edx	;salto la linea siguiente
 %endmacro
@@ -134,13 +126,14 @@
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;========================
+
+;000000ff000000ff 000000ff00000000
 %macro armarMascara 1
-	pxor	%1, %1		;limpio B
 	pcmpeqb	%1, %1		;armo la mascara, paso todo a uno
-	psllw	%1, 8
-	psrlw	%1, 8		;meto ceros intercalados de a byte
-	psrldq	%1, 2		;paso el último word a cero
-	pslldq	%1, 2
+	pslld	%1, 24
+	psrld	%1, 24		;meto ceros intercalados de a byte
+	psrldq	%1, 1		;paso el byte mas bajo a cero
+	pslldq	%1, 1
 %endmacro
 ;========================
 ; MACRO freichenY
@@ -152,7 +145,7 @@
 ;========================
 %macro	freiChenY 2
 	;**********************
-	; PROCESO PIXEL 2,4,6,8
+	; PROCESO PIXEL 2,6
 	;**********************
 	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
 	armarMascara	xmm7
