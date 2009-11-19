@@ -8,7 +8,7 @@
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
-	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".jpg", dst_asm);			\
+	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".bmp", dst_asm);			\
 	printf(#OPERATOR #XDERIVATE #YDERIVATE " demoro: %i\n", tscl);
 
 #define testOperatorNoPrint(OPERATOR, XDERIVATE, YDERIVATE)						\
@@ -16,7 +16,7 @@
 	__asm__ __volatile__ ("rdtsc;mov %%eax,%0" : : "g" (tscl));				\
 	OPERATOR (src, dst_asm, cvGetSize (src).width, cvGetSize(src).height, XDERIVATE, YDERIVATE);	\
 	__asm__ __volatile__ ("rdtsc;sub %0,%%eax;mov %%eax,%0" : : "g" (tscl));		\
-	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".jpg", dst_asm);			
+	cvSaveImage("img/res/asm/" #OPERATOR  #XDERIVATE  #YDERIVATE ".bmp", dst_asm);			
 
 #define	CORRIDAS	1
 extern void asmRoberts(IplImage * src, IplImage * dst, int ancho, int alto, int xorder, int yorder);
@@ -155,15 +155,14 @@ int main( int argc, char** argv ){
 	testOperator(asmFreiChen,0,1);
 	testOperator(asmFreiChen,1,1);
 
-
-	cvReleaseData(src);
-	cvReleaseData(dst);
-	cvReleaseData(dst_asm);
-	cvReleaseData(dst_ini);
-	cvReleaseImage(&src);
-	cvReleaseImage(&dst);
-	cvReleaseImage(&dst_asm);
-	cvReleaseImage(&dst_ini);
+// 	cvReleaseData(src);
+// 	cvReleaseData(dst);
+// 	cvReleaseData(dst_asm);
+// 	cvReleaseData(dst_ini);
+// 	cvReleaseImage(&src);
+// 	cvReleaseImage(&dst);
+// 	cvReleaseImage(&dst_asm);
+// 	cvReleaseImage(&dst_ini);
 
 	return 0;
 }
