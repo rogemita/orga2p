@@ -1,6 +1,7 @@
 %define REMAINDER	[ebp - 4]
 %define	STEP_X		14
 %define	STEP_Y		14
+%define	FINAL_STEP	2
 %define RESERVED_BYTES	4
 
 ;========================
@@ -72,11 +73,12 @@
 	; TERMINE COPIO A DESTINO
 	;************************
 	packuswb	xmm6, xmm6
+
 	movq		[eax], xmm6	;copio los 8 bytes al destino
 	
+
 %if %5 = 0
 	add		eax, 8	;salto la linea siguiente
-	
 	;**************************
 	; VOY A APLICAR EL OPERADOR
 	; EN LA PARTE ALTA
@@ -104,7 +106,7 @@
 	; TERMINE COPIO A DESTINO
 	;************************
 	packuswb	xmm6, xmm6
-	movdqu		[eax], xmm6	;copio los 4 bytes al destino de los cuales 2 son validos
+	movq		[eax], xmm6	;copio los 4 bytes al destino de los cuales 2 son validos
 	sub		eax, 8
 %endif
 	add		eax, edx	;salto la linea siguiente
@@ -288,9 +290,11 @@
 	; PROCESO EL RESTO DE
 	; LAS LINEAS QUE CARGUE
 	;******************************
+	sub	esi, FINAL_STEP
+	sub	edi, FINAL_STEP
 
-	sub	esi, 2
-	sub	edi, 2
+ 	pxor	xmm6, xmm6		;limpio A
+	pxor	xmm7, xmm7		;limpio B
 
 	xor	eax, eax		;offset de linea
 
@@ -313,15 +317,14 @@
 	sobelPrewittX xmm2, xmm3, xmm4, %1, 1
 	sobelPrewittX xmm3, xmm4, xmm5, %1, 1
 
-
-	add	esi, 2
-	add	edi, 2
+	add	esi, FINAL_STEP
+	add	edi, FINAL_STEP
 
 %%noProcesaSX:
-	mov	eax, REMAINDER
-
-	sub	esi, eax
-	sub	edi, eax
+ 	mov	eax, REMAINDER
+ 
+ 	sub	esi, eax
+ 	sub	edi, eax
 
 	mov	eax, edx
 	add	eax, edx
@@ -411,8 +414,8 @@
 	; LAS LINEAS QUE CARGUE
 	;******************************
 
-	sub	esi, 2
-	sub	edi, 2
+	sub	esi, FINAL_STEP
+	sub	edi, FINAL_STEP
 
 	xor	eax, eax		;offset de linea
 
@@ -432,8 +435,8 @@
 	sobelPrewittY xmm3, xmm1, %1
 	sobelPrewittY xmm4, xmm2, %1
 
-	add	esi, 2
-	add	edi, 2
+	add	esi, FINAL_STEP
+	add	edi, FINAL_STEP
 
 %%noProcesaSY:
 	mov	eax, REMAINDER

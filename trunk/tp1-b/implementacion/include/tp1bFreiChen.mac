@@ -1,6 +1,6 @@
 %define REMAINDER	[ebp - 4]
 %define	STEP_X		14
-%define	STEP_Y		14
+%define	STEP_Y		15
 %define RESERVED_BYTES	4
 
 ;========================
@@ -52,13 +52,15 @@
 %endmacro
 
 ;========================
-; MACRO aplicarOperador
+; MACRO aplicarOperadorX
 ;========================
 ; Aplicar operador a cuatro bytes
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;	registro2	registros sobre los cuales operar 
 ;	registro3	registros sobre los cuales operar 
+;	word		word a obtener
+;	salta a la linea?	salta a la linea siguiente?
 ;========================
 %macro aplicarOperadorX 4-5 0
 	;**************************
@@ -108,47 +110,34 @@
 ;	procesaAmbos	indica si debe procesar los datos mas altos
 ;========================
 %macro	freiChenX 3-4 0
-
-	aplicarOperadorX %1, %2, %3, 0
 %if %4 = 0
+	aplicarOperadorX %1, %2, %3, 0
 	aplicarOperadorX %1, %2, %3, 1
 	aplicarOperadorX %1, %2, %3, 2
 	aplicarOperadorX %1, %2, %3, 3, 1
 	sub		eax, 12
+%else
+	aplicarOperadorX %1, %2, %3, 0, 1
 %endif
 	add		eax, edx	;salto la linea siguiente
 %endmacro
 
 ;========================
-; MACRO armarMascara
+; MACRO aplicarOperadorY
 ;========================
-; Arma la mascara para seleccionar pixeles pares o impares
-; Entrada:
-;	registro1	registros sobre los cuales operar 
-;========================
-
-;000000ff000000ff 000000ff00000000
-%macro armarMascara 1
-	pcmpeqb	%1, %1		;armo la mascara, paso todo a uno
-	pslld	%1, 24
-	psrld	%1, 24		;meto ceros intercalados de a byte
-	psrldq	%1, 1		;paso el byte mas bajo a cero
-	pslldq	%1, 1
-%endmacro
-;========================
-; MACRO freichenY
-;========================
-; Cuerpo de codigo que aplica el operador de freichen en el orden y
+; Aplica el operador freiChen en y a cuatro pixeles
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;	registro2
+;	esGrupoMasBajo?	indica si es el grupo mas bajo
 ;========================
-%macro	freiChenY 2
-	;**********************
-	; PROCESO PIXEL 2,6
-	;**********************
+%macro aplicarOperadorY 2-3 0
 	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
 	armarMascara	xmm7
+%if %3 = 1
+	psrldq		xmm7, 1					;solo para este caso paso el byte mas bajo a cero
+	pslldq		xmm7, 1
+%endif
 	pand		xmm5, xmm7
 	cvtdq2ps	xmm5, xmm5			;convierto a precision simple
 	
@@ -190,63 +179,55 @@
 
 	cvttps2dq	xmm5, xmm5
 	pxor		xmm6, xmm6
+	packusdw	xmm5, xmm6
 	packuswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
+	punpcklwd	xmm5, xmm6	;saturo los pixeles
 	movdqu		xmm6, [eax]
 	por		xmm5, xmm6
 	movdqu		[eax], xmm5		;copio los pixeles
+%if %3 <> 2
+	inc eax
+	psrldq		%1, 1
+	psrldq		%2, 1
+%endif
+%endmacro
 
-	;**********************
-	; PROCESO PIXEL 1,3,5
-	;**********************
-	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
-	psrldq		xmm5, 1
-	armarMascara	xmm7
-	pand		xmm5, xmm7
-	cvtdq2ps	xmm5, xmm5			;convierto a precision simple
-	
-	movdqu		xmm6, %1
-	pslldq		xmm6, 1				;cargo y me quedo con el pixel dos a derecha
-	pand		xmm6, xmm7
-	cvtdq2ps	xmm6, xmm6
-	subps		xmm5, xmm6
+;========================
+; MACRO armarMascara
+;========================
+; Arma la mascara para seleccionar pixeles pares o impares
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;========================
 
-	movdqu		xmm6, %2
-	psrldq		xmm6, 1
-	pand		xmm6, xmm7
-	cvtdq2ps	xmm6, xmm6
-	subps		xmm5, xmm6
+;000000ff000000ff 000000ff00000000
+%macro armarMascara 1
+	pcmpeqb	%1, %1		;armo la mascara, paso todo a uno
+	pslld	%1, 24
+	psrld	%1, 24		;meto ceros intercalados de a byte
+	;psrldq	%1, 1		;paso el byte mas bajo a cero
+	;pslldq	%1, 1
+%endmacro
+;========================
+; MACRO freichenY
+;========================
+; Cuerpo de codigo que aplica el operador de freichen en el orden y
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;========================
+%macro	freiChenY 2
+	; PROCESO PIXEL 3,7,11,15
+	aplicarOperadorY %1, %2, 1
+	; PROCESO PIXEL 2,6,10,14
+	aplicarOperadorY %1, %2
+	; PROCESO PIXEL 1,5,9,13
+	aplicarOperadorY %1, %2
+	; PROCESO PIXEL 0,4,8,12
+	aplicarOperadorY %1, %2, 2
 
-	movdqu		xmm6, %2
-	pslldq		xmm6, 1
-	pand		xmm6, xmm7
-	cvtdq2ps	xmm6, xmm6
-	subps		xmm5, xmm6		; ya el operador aplicado en xmm5 a los pixeles, 2, 4, 6, 8
-
-
-	movdqu		xmm6, %1			;cargo y me quedo con el pixel una a derecha
-	pand		xmm6, xmm7
-	cvtdq2ps	xmm6, xmm6			;lo mismo enmascaro y convierto a precision simple luego de desplazar
-	cargarRaiz2	xmm7
-	mulps		xmm6, xmm7		
-	addps		xmm5, xmm6			;multiplico por raiz de dos y acumulo
-
-      
-	movdqu		xmm6, %2
-	armarMascara	xmm7
-	pand		xmm6, xmm7
-	cvtdq2ps	xmm6, xmm6
-	cargarRaiz2	xmm7
-	mulps		xmm6, xmm7
-	subps		xmm5, xmm6
-
-	cvttps2dq	xmm5, xmm5
-	pxor		xmm6, xmm6
-	packuswb	xmm5, xmm6
-	punpcklbw	xmm5, xmm6	;saturo los pixeles
-	movdqu		xmm6, [eax]
-	por		xmm5, xmm6
-	movdqu		[eax], xmm5		;copio los pixeles
+	sub	eax, 3
 
 	add		eax, edx	;salto la linea siguiente
 %endmacro
