@@ -6,6 +6,7 @@
  * TODO: Completar el resto de las TSSs
  */
 tss tsss[TSS_COUNT] = {
+	// este es el contexto de la tarea del kernel
 	(tss) {
 		(unsigned short) 0,
 		(unsigned short) 0,
@@ -89,6 +90,7 @@ tss tsss[TSS_COUNT] = {
 		(unsigned short)  0
 	}, 
 
+	// este es el contexto del pintor
 	(tss) {
 		(unsigned short) 0,
 		(unsigned short) 0,
