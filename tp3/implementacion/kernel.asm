@@ -66,7 +66,7 @@ modo_protegido:
 
 	mov	ax, 0x0018
 	mov	es, ax
-	xor		edi, edi
+	xor	edi, edi
 	;mov	edi, 162					;paso a la fila de abajo y salteo la primer columna
 	mov	ecx, 80
 	mov	ax, 0xbe32
@@ -80,7 +80,7 @@ primer_fila:
 	
 medio:
 	mov	[es:edi], ax
-	add		edi, (80-1)*2
+	add	edi, (80-1)*2
 	mov	[es:edi], ax
 	inc	edi
 	inc	edi
@@ -137,7 +137,7 @@ seguir:
 	call	pic_enable
 
 	sti
-	jmp $
+	jmp sigue
 
 		; TODO: Inicializar la IDT
 		
@@ -163,15 +163,15 @@ seguir:
 %include "a20.asm"
 %include "pic.asm"
 
-%define TASK1INIT 0x8000
-%define TASK2INIT 0x9000
-%define PDPINTOR 0xA000
-%define PDTRADU 0xB000
-%define PTPINTOR 0xC000
-%define PTTRADK 0xD000
-%define STACKTR 0x16000
-%define STACKPT 0x15000
-%define KORG 0x1200
+%define TASK1INIT	0x8000
+%define TASK2INIT	0x9000
+%define PDPINTOR	0xA000
+%define PDTRADU		0xB000
+%define PTPINTOR	0xC000
+%define PTTRADK		0xD000
+%define STACKTR		0x16000
+%define STACKPT		0x15000
+%define KORG		0x1200
 
 TIMES TASK1INIT - KORG - ($ - $$) db 0x00
 incbin "pintor.tsk"
@@ -220,7 +220,7 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 	dd	0x0
 %endrep
 	dd	0x00010003	; 184
-%rep	840			; 185 - 1023
+%rep	839			; 185 - 1023
 	dd	0x0
 %endrep
 
@@ -260,62 +260,110 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 	dd 0x0
 %endrep
 
+sigue:
+xchg bx, bx
 mov	edi, tsss
-add		edi, 104		; nos paramos en la segunda entry de la tabla de tss's
 
+; cargo en el descriptro de la gdt correspondiente a la tarea kernel, la base de la tss de la misma
+mov	esi, gdt
+add	esi, (8*4 + 2)
+mov	eax, edi
+mov	[esi], ax
+shr	eax, 16
+mov	[esi + 4], al
+mov	[esi + 7], ah
+
+add	edi, 104	; nos paramos en la segunda entry de la tabla de tss's
+
+; cargo en el descriptro de la gdt correspondiente a la tarea traductor, la base de la tss de la misma
+mov	esi, gdt
+add	esi, (8*5 + 2)
+mov	eax, edi
+mov	[esi], ax
+shr	eax, 16
+mov	[esi + 4], al
+mov	[esi + 7], ah
 ;cargamos la informacion de la tarea traductor antes de saltar
-add		edi, 4
+add	edi, 4
 mov	[edi], esp
-add		edi, 4
+add	edi, 4
 mov word [edi], ss
-add		edi, (5*4)
+add	edi, (5*4)
 mov dword [edi], PDTRADU
-add		edi, (2*4)
+add	edi, (2*4)
 mov dword [edi], 0x00000202
-add		edi, (4*4)
+add	edi, (5*4)		; salteo eax, ecx, edx, ebx
 mov	eax, 0x17000 - 0x4 ;direccion virtual de la pila del traductor pero que crece desde abajo
-stosd	; esp
-stosd	; ebp
-add		edi, (3*4)
+
+;PREGUNTAR ESTO
+;xchg	bx, bx
+mov	[edi], eax
+mov	[edi], eax
+add	edi, (2*4)
+;stosd	; esp
+;stosd	; ebp
+add	edi, (3*4)
 mov word [edi], 0x08
+add	edi, 4
 mov	eax, 0x10
 %rep	4
-	stosd		; les doy el segmento de dato
+	mov [edi], eax
+	;stosd		; les doy el segmento de dato
 %endrep
-add		edi, (6)
+	add edi, (4*4)
+add	edi, (6)
 mov word [edi], 0xFFFF
 
 mov	edi, tsss
-add		edi, (104*2)
+add	edi, (104*2)	; estamos parados en la tercera posicion de la tss, para cargar la tss pintor
+; cargo en el descriptro de la gdt correspondiente a la tarea pintor, la base de la tss de la misma
+mov	esi, gdt
+add	esi, (8*6 + 2)
+mov	eax, edi
+mov	[esi], ax
+shr	eax, 16
+mov	[esi + 4], al
+mov	[esi + 7], ah
 ;cargamos la informacion de la tarea pintor
-add		edi, 4
+add	edi, 4
 mov	[edi], esp
-add		edi, 4
+add	edi, 4
 mov word [edi], ss
-add		edi, (5*4)
+add	edi, (5*4)
 mov dword [edi], PDPINTOR
-add		edi, (2*4)
+add	edi, (2*4)
 mov dword [edi], 0x00000202
-add		edi, (4*4)
+add	edi, (5*4)
 mov	eax, 0x16000 - 0x4 ;direccion virtual de la pila del pintor pero que crece desde abajo
-stosd	; esp
-stosd	; ebp
-add		edi, (3*4)
+;;;;;;;;;;;;;;;;;
+mov	[edi], eax
+mov	[edi], eax
+add	edi, (2*4)
+;stosd	; esp
+;stosd	; ebp
+;;;;;;;;;;;;;;;;;;;
+add	edi, (3*4)
 mov word [edi], 0x08
+add 	edi, 4
 mov	eax, 0x10
 %rep	4
-	stosd		; les doy el segmento de dato
+	mov	[edi], eax
+	;stosd		; les doy el segmento de dato
 %endrep
-add		edi, (6)
+	add	edi, (4*4)
+
+add	edi, (6)
 mov word [edi], 0xFFFF
 
-;ponemos en el indice 4 de la gdt el descriptor de la tss de la tarea pintor
-;ponemos en el indice 5 de la gdt el descriptor de la tss de la tarea traductor
+xchg bx, bx
+;jmp $
 
-;sti
+;cargo el task register con el descriptor correspondiente a la tarea actual
+mov	ax, 0x20
+str	ax
 
-jmp		0x28:0
-jmp		$
+jmp	0x28:0x0
+jmp	$
 
 
 
