@@ -113,8 +113,8 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned short) 0x0067, 
 		(unsigned short) 0x0000,
 		(unsigned char) 0x00, 
-		(unsigned char) 0x2, 
-		(unsigned char) 1, 
+		(unsigned char) 0x9, 
+		(unsigned char) 0, 
 		(unsigned char) 0, 
 		(unsigned char) 1, 
 		(unsigned char) 0x0,
@@ -137,8 +137,8 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned short) 0x0067, 
 		(unsigned short) 0x0000,
 		(unsigned char) 0x00, 
-		(unsigned char) 0x2, 
-		(unsigned char) 1, 
+		(unsigned char) 0x9, 
+		(unsigned char) 0, 
 		(unsigned char) 0, 
 		(unsigned char) 1, 
 		(unsigned char) 0x0,
@@ -149,12 +149,12 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned char) 0x00 
 	},
 
-	/*********************************************************************************************
-	* |base 31:24 | G | D/B | L | AVL | Seg. Limit. 19:16	| P | DPL (2) | S | TYPE (4) | base 23:16	| *
-	*  0x00		   1	  1      0      0      0x0			  1   00            1   0010		0x01		  *
-	* | BASE ADRESS 15:00						| SEGMENT LIMIT 15:00				| *
-	* 		0x6000									0x0067							  *
-	*********************************************************************************************/
+/*********************************************************************************************
+* |base 31:24 | G | D/B | L | AVL | Seg. Limit. 19:16	| P | DPL (2) | S | TYPE (4) | base 23:16| *
+*  0x00		1    1    0    0      0x0	  	  1    00       1   0010	0x00	*
+* | BASE ADRESS 15:00					| SEGMENT LIMIT 15:00			| *
+* 		0x0000						0x0067			  *
+*********************************************************************************************/
 
 // 0000000000110 | 000 = 0x30
 
@@ -162,8 +162,8 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned short) 0x0067, 
 		(unsigned short) 0x0000,
 		(unsigned char) 0x00, 
-		(unsigned char) 0x2, 
-		(unsigned char) 1, 
+		(unsigned char) 0x9,
+		(unsigned char) 0, 
 		(unsigned char) 0, 
 		(unsigned char) 1, 
 		(unsigned char) 0x0,

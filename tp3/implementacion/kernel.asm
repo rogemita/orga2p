@@ -97,8 +97,6 @@ ultima_fila:
 	stosw
 	loop	ultima_fila
 	
-	
-seguir:
 	;lodsb -> al, [ds:esi] y este aumenta esi en lo que sea
 	;stosw -> escribe en es:edi y ademas aumenta edi en 2 bytes (lo que sea)
 
@@ -111,7 +109,8 @@ seguir:
 	; Ejercicio 3
 
 	;Esto va en la rutina de interrupciones!!
-	
+	mov	ax, 0x10
+	mov	es, ax
 	
 	;habilito paginacion	
 	mov eax, 0x0000B000		;cargo la direccion del directorio en cr3
@@ -137,7 +136,7 @@ seguir:
 	call	pic_enable
 
 	sti
-	jmp sigue
+	;jmp sigue
 
 		; TODO: Inicializar la IDT
 		
@@ -158,10 +157,6 @@ seguir:
 		; TODO: Habilitar Interrupciones
 		
 		; TODO: Saltar a la primer tarea
-		
-		
-%include "a20.asm"
-%include "pic.asm"
 
 %define TASK1INIT	0x8000
 %define TASK2INIT	0x9000
@@ -172,6 +167,103 @@ seguir:
 %define STACKTR		0x16000
 %define STACKPT		0x15000
 %define KORG		0x1200
+
+	;xchg bx, bx
+	mov	edi, tsss
+
+; cargo en el descriptro de la gdt correspondiente a la tarea kernel, la base de la tss de la misma
+	mov	esi, gdt
+	add	esi, (8*4 + 2)
+	mov	eax, edi
+	mov	[esi], ax
+	shr	eax, 16
+	mov	[esi + 4], al
+	mov	[esi + 7], ah
+	
+	add	edi, 104	; nos paramos en la segunda entry de la tabla de tss's
+
+; cargo en el descriptro de la gdt correspondiente a la tarea traductor, la base de la tss de la misma
+	mov	esi, gdt
+	add	esi, (8*5 + 2)
+	mov	eax, edi
+	mov	[esi], ax
+	shr	eax, 16
+	mov	[esi + 4], al
+	mov	[esi + 7], ah
+;cargamos la informacion de la tarea traductor antes de saltar
+	add	edi, 4
+	;mov	[edi], esp
+	mov dword [edi], 0x17000 - 0x4
+	add	edi, 4
+	mov word [edi], ss
+	add	edi, (5*4)
+	mov dword [edi], PDTRADU
+	add	edi, (4)
+	mov dword [edi], TASK2INIT
+	add	edi, (4)
+	mov dword [edi], 0x00000202
+	add	edi, (5*4)		; salteo eax, ecx, edx, ebx
+	mov	eax, 0x17000 - 0x4 ;direccion virtual de la pila del traductor pero que crece desde abajo
+	stosd	; esp
+	stosd	; ebp
+	add	edi, (2*4)
+	mov word [edi], 0x10
+	add	edi, 4
+	mov word [edi], 0x08
+	add	edi, 4
+	mov	eax, 0x10
+	%rep	4
+		stosd		; les doy el segmento de dato
+	%endrep
+	add	edi, (6)
+	mov word [edi], 0xFFFF
+	
+	mov	edi, tsss
+	add	edi, (104*2)	; estamos parados en la tercera posicion de la tss, para cargar la tss pintor
+	; cargo en el descriptro de la gdt correspondiente a la tarea pintor, la base de la tss de la misma
+	mov	esi, gdt
+	add	esi, (8*6 + 2)
+	mov	eax, edi
+	mov	[esi], ax
+	shr	eax, 16
+	mov	[esi + 4], al
+	mov	[esi + 7], ah
+;cargamos la informacion de la tarea pintor
+	add	edi, 4
+	mov dword [edi], (0x16000 - 0x4)
+	add	edi, 4
+	mov word [edi], ss
+	add	edi, (5*4)
+	mov dword [edi], PDPINTOR
+	add	edi, (4)
+	mov dword [edi],TASK1INIT
+	add	edi, (4)
+	mov dword [edi], 0x00000202
+	add	edi, (5*4)
+	mov	eax, 0x16000 - 0x4 ;direccion virtual de la pila del pintor pero que crece desde abajo
+	stosd	; esp
+	stosd	; ebp
+	add	edi, (2*4)
+	mov word [edi], 0x10
+	add	edi, 4
+	mov word [edi], 0x08
+	add 	edi, 4
+	mov	eax, 0x10
+	%rep	4
+		mov	[edi], eax
+		stosd		; les doy el segmento de dato
+	%endrep
+	add	edi, (6)
+	mov word [edi], 0xFFFF	
+	
+	mov	ax, 0x20
+	ltr	ax
+	xchg bx, bx
+	jmp	0x30:0x0
+	jmp	$
+		
+%include "a20.asm"
+%include "pic.asm"
 
 TIMES TASK1INIT - KORG - ($ - $$) db 0x00
 incbin "pintor.tsk"
@@ -259,113 +351,3 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 %rep	832			; 192 - 1023
 	dd 0x0
 %endrep
-
-sigue:
-xchg bx, bx
-mov	edi, tsss
-
-; cargo en el descriptro de la gdt correspondiente a la tarea kernel, la base de la tss de la misma
-mov	esi, gdt
-add	esi, (8*4 + 2)
-mov	eax, edi
-mov	[esi], ax
-shr	eax, 16
-mov	[esi + 4], al
-mov	[esi + 7], ah
-
-add	edi, 104	; nos paramos en la segunda entry de la tabla de tss's
-
-; cargo en el descriptro de la gdt correspondiente a la tarea traductor, la base de la tss de la misma
-mov	esi, gdt
-add	esi, (8*5 + 2)
-mov	eax, edi
-mov	[esi], ax
-shr	eax, 16
-mov	[esi + 4], al
-mov	[esi + 7], ah
-;cargamos la informacion de la tarea traductor antes de saltar
-add	edi, 4
-mov	[edi], esp
-add	edi, 4
-mov word [edi], ss
-add	edi, (5*4)
-mov dword [edi], PDTRADU
-add	edi, (2*4)
-mov dword [edi], 0x00000202
-add	edi, (5*4)		; salteo eax, ecx, edx, ebx
-mov	eax, 0x17000 - 0x4 ;direccion virtual de la pila del traductor pero que crece desde abajo
-
-;PREGUNTAR ESTO
-;xchg	bx, bx
-mov	[edi], eax
-mov	[edi], eax
-add	edi, (2*4)
-;stosd	; esp
-;stosd	; ebp
-add	edi, (3*4)
-mov word [edi], 0x08
-add	edi, 4
-mov	eax, 0x10
-%rep	4
-	mov [edi], eax
-	;stosd		; les doy el segmento de dato
-%endrep
-	add edi, (4*4)
-add	edi, (6)
-mov word [edi], 0xFFFF
-
-mov	edi, tsss
-add	edi, (104*2)	; estamos parados en la tercera posicion de la tss, para cargar la tss pintor
-; cargo en el descriptro de la gdt correspondiente a la tarea pintor, la base de la tss de la misma
-mov	esi, gdt
-add	esi, (8*6 + 2)
-mov	eax, edi
-mov	[esi], ax
-shr	eax, 16
-mov	[esi + 4], al
-mov	[esi + 7], ah
-;cargamos la informacion de la tarea pintor
-add	edi, 4
-mov	[edi], esp
-add	edi, 4
-mov word [edi], ss
-add	edi, (5*4)
-mov dword [edi], PDPINTOR
-add	edi, (2*4)
-mov dword [edi], 0x00000202
-add	edi, (5*4)
-mov	eax, 0x16000 - 0x4 ;direccion virtual de la pila del pintor pero que crece desde abajo
-;;;;;;;;;;;;;;;;;
-mov	[edi], eax
-mov	[edi], eax
-add	edi, (2*4)
-;stosd	; esp
-;stosd	; ebp
-;;;;;;;;;;;;;;;;;;;
-add	edi, (3*4)
-mov word [edi], 0x08
-add 	edi, 4
-mov	eax, 0x10
-%rep	4
-	mov	[edi], eax
-	;stosd		; les doy el segmento de dato
-%endrep
-	add	edi, (4*4)
-
-add	edi, (6)
-mov word [edi], 0xFFFF
-
-xchg bx, bx
-;jmp $
-
-;cargo el task register con el descriptor correspondiente a la tarea actual
-mov	ax, 0x20
-str	ax
-
-jmp	0x28:0x0
-jmp	$
-
-
-
-
-

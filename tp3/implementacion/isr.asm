@@ -23,6 +23,22 @@ _isr32:
 	call	next_clock
 	mov  al, 0x60
 	out 0x20, al
+switching_task:
+	mov	ebx, [isrnumero]
+	bt	ebx, 0
+	jc	traductor
+pintor:
+	;sti
+	;xchg	bx, bx
+	jmp	0x30:0x0
+	jmp	termino
+
+traductor:
+	;sti
+	;xchg	bx,bx
+	jmp	0x28:0x0
+
+termino:
 	popad
 	sti
 	iret
