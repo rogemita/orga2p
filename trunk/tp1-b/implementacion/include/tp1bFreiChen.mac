@@ -1,6 +1,6 @@
 %define REMAINDER	[ebp - 4]
 %define	STEP_X		14
-%define	STEP_Y		15
+%define	STEP_Y		12
 %define RESERVED_BYTES	4
 
 ;========================
@@ -134,10 +134,6 @@
 %macro aplicarOperadorY 2-3 0
 	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
 	armarMascara	xmm7
-%if %3 = 1
-	psrldq		xmm7, 1					;solo para este caso paso el byte mas bajo a cero
-	pslldq		xmm7, 1
-%endif
 	pand		xmm5, xmm7
 	cvtdq2ps	xmm5, xmm5			;convierto a precision simple
 	
@@ -179,18 +175,17 @@
 
 	cvttps2dq	xmm5, xmm5
 	pxor		xmm6, xmm6
-	packusdw	xmm5, xmm6
-	packuswb	xmm5, xmm6
+	packssdw	xmm5, xmm6
+	packsswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
 	punpcklwd	xmm5, xmm6	;saturo los pixeles
 	movdqu		xmm6, [eax]
 	por		xmm5, xmm6
 	movdqu		[eax], xmm5		;copio los pixeles
-%if %3 <> 2
-	inc eax
-	psrldq		%1, 1
-	psrldq		%2, 1
-%endif
+ 	inc eax
+ 	psrldq		%1, 1
+ 	psrldq		%2, 1
+
 %endmacro
 
 ;========================
@@ -204,10 +199,9 @@
 ;000000ff000000ff 000000ff00000000
 %macro armarMascara 1
 	pcmpeqb	%1, %1		;armo la mascara, paso todo a uno
-	pslld	%1, 24
-	psrld	%1, 24		;meto ceros intercalados de a byte
-	;psrldq	%1, 1		;paso el byte mas bajo a cero
-	;pslldq	%1, 1
+	psrld	%1, 24
+	psrldq	%1, 1
+	pslldq	%1, 1
 %endmacro
 ;========================
 ; MACRO freichenY
@@ -225,10 +219,8 @@
 	; PROCESO PIXEL 1,5,9,13
 	aplicarOperadorY %1, %2
 	; PROCESO PIXEL 0,4,8,12
-	aplicarOperadorY %1, %2, 2
-
-	sub	eax, 3
-
+	aplicarOperadorY %1, %2
+	;sub	eax, 3
 	add		eax, edx	;salto la linea siguiente
 %endmacro
 
