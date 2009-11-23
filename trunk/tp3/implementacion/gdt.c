@@ -8,12 +8,12 @@
 gdt_entry gdt[GDT_COUNT] = {
 	/* Descriptor nulo*/
 
-	/*********************************************************************************************
-	* |base 31:24 | G | D/B | L | AVL | Seg. Limit 19:16	| P | DPL (2) | S | TYPE (4) | base 23:16	| *
-	* 																				  *
-	* | BASE ADRESS 15:00						| SEGMENT LIMIT 15:00				| *
-	*																				  *
-	*********************************************************************************************/
+/****************************************************************************
+* |base 31:24|G|D/B|L|AVL|Seg. Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16| *
+* 									    *
+* |base 15:00				  |		Seg. limit 15:00  | *
+*	
+*****************************************************************************/
 
 	(gdt_entry){ 
 		(unsigned short) 0x0000, 
@@ -121,7 +121,7 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned char) 0,  
 		(unsigned char) 0,  
 		(unsigned char) 1,  
-		(unsigned char) 1, 
+		(unsigned char) 0, 
 		(unsigned char) 0x00 
 	},
 
@@ -145,7 +145,7 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned char) 0,  
 		(unsigned char) 0,  
 		(unsigned char) 1,  
-		(unsigned char) 1, 
+		(unsigned char) 0, 
 		(unsigned char) 0x00 
 	},
 
@@ -170,7 +170,7 @@ gdt_entry gdt[GDT_COUNT] = {
 		(unsigned char) 0,  
 		(unsigned char) 0,  
 		(unsigned char) 1,  
-		(unsigned char) 1, 
+		(unsigned char) 0, 
 		(unsigned char) 0x00 
 	}
 };
