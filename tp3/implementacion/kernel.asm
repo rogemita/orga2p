@@ -12,12 +12,9 @@ extern idtFill		; metodo para iniciar descriptores de la idt
 extern tsss;		; puntero a la tsss = arreglo de datos tss 
 
 
-;Aca arranca todo, en el primer byte.
 start:
-; 		cli					;no me interrumpan por ahora, estoy ocupado
-; 		jmp 	bienvenida
-; 
-;aca ponemos todos los mensajes
+; 		cli
+
 jmp inicio	
 nombre_grupo:		db 'Orga 2 POPA'
 nombre_grupo_len	equ $ - nombre_grupo		
@@ -28,7 +25,6 @@ nombre_grupo_len	equ $ - nombre_grupo
 ; |*******************************************************************|
 inicio:
 	call check_A20
-	;xchg	bx, bx
 	cmp ax, 1
 	je deshabilitar_interrupciones
 	call enable_A20
@@ -38,11 +34,12 @@ deshabilitar_interrupciones:	; deshabilitando interrupciones
 ;|				- EJERCICIO 1 -						|
 ;|	1-Se deshabilitan las interrupciones hasta que se inicialize			|
 ;|		una IDT con sus rutinas respectivas de atencion				|
-;|	2-Se carga el descriptor de gdt en el registro gdt (base|limite)		|
+;|	2-Se carga el descriptor de gdt en el registro gdtr (base|limite)		|
 ;|	3-En el cr0 se habilita el bit de modo protegido, bit 0				|
-;|	4-Se utiliza un salto largo para pasar a modo protegido				|
-;|		usando 0x08 como selector de gdt:					|
-;|		[ index=0000000000001 | TI=0 (GDT)| RPL=00 (maximo privilegio)]		|
+;|	4-Se utiliza un jmp far para pasar a modo protegido				|
+;|		usando 0x08 como selector de gdt, asi cs vale 0x08 de a partir de ahora	|
+;|		ahora cs pasa a ser un selector de seg. y se interpreta de esta forma:	|
+;|		0x08 = [ index=0000000000001 | TI=0 (GDT)| RPL=00 (maximo privilegio)]	|
 ;|		segundo descriptor de segmento de la gdt, perteneciente al segmento	|
 ;|		de codigo:								|
 ;|	**************************************************************************	|
@@ -54,8 +51,8 @@ deshabilitar_interrupciones:	; deshabilitando interrupciones
 ;|	**************************************************************************	|
 ;|	5-Una vez pasado a modo protegido: se inicializan los selectores de segmentos	|
 ;|		de datos con el selector de gdt:					|
-;|		[ index=0000000000010 | TI=0 (GDT)| RPL=00 (maximo privilegio)]		|
-;|		 con el descriptor de datos:						|
+;|		0x10 = [ index=0000000000010 | TI=0 (GDT)| RPL=00 (maximo privilegio)]	|
+;|		con el descriptor de datos:						|
 ;|	**************************************************************************	|
 ;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
 ;|	*|   0x00   |1| 1 |0| 0 |	0xF	|1|  00   |1|  0x2   |    00    |* 	|
@@ -64,9 +61,9 @@ deshabilitar_interrupciones:	; deshabilitando interrupciones
 ;|	*|0x0000				|0xFFFF				|*	|
 ;|	**************************************************************************	|
 ;|	6-Al registro ES momentaneamente lo cargamos con el tercer descriptor de la gdt:|
-;|		[ index=0000000000010 | TI=0 (GDT)| RPL=00 (maximo privilegio)]		|
+;|		0x18 = [ index=0000000000010 | TI=0 (GDT)| RPL=00 (maximo privilegio)]	|
 ;|		este descriptor contiene un segmento solo destinado para la matriz	|
-;|		de video mapeada desde la posicion 0xB8000 de memoria, size=80*25*2bytes|
+;|		de video, mapeada desde 0xB8000 de memoria, size=80*25*2bytes		|
 ;|	**************************************************************************	|
 ;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
 ;|	*|   0x00   |0| 1 |0| 0 |	0x0	|1|  00   |1|  0x2   |    0B    |* 	|
@@ -77,7 +74,7 @@ deshabilitar_interrupciones:	; deshabilitando interrupciones
 ;|		se limpia la pantalla colocando caracter vacio de fondo negro (ax=0x00)	|
 ;|		usando la funcion stosw ( [es:edi] = ax ).				|
 ;|		De la misma forma se recorre la matriz colocando solo en los bordes	|
-;|		un caracter deseado armando asi un recuadro como pide el enunciado 1.c	|
+;|		un caracter deseado, armando asi un recuadro como pide el enunciado 1.c.|
 ;|											|
 ;|**************************************************************************************|
 
@@ -139,7 +136,7 @@ ultima_fila:
 	loop	ultima_fila
 
 	mov	ax, 0x10
-	mov	es, ax		; doy segmento de datos a es como el resto
+	mov	es, ax		; doy el segmento de datos a es como el resto
 
 	;stosw -> escribe lo que esta en ax en [es:edi] y ademas aumenta edi en 2 bytes
 
@@ -148,8 +145,8 @@ ultima_fila:
 ;|	la definicion de directorios y tablas de paginas se encuentra en la etiqueta:	|
 ;|		inicializacion_directorios_y_tablas_de_paginas				|
 ;|	1-En cr3 se guarda la posicion donde comienza el directorio de tablas de paginas|
-;|		perteneciente al kernel, directorio que comparte con el traductor.	|
-;|		Uso una entry para apuntar a una primer tabla de paginas:		|
+;|		perteneciente al kernel (directorio que comparte con el traductor).	|
+;|		El P.D. tiene una entry para apuntar a una primer tabla de paginas:	|
 ;|		info tab:								|
 ;|		CR3 = 0x000B000								|
 ;|		0x00000000-0x00007fff -> 0x00000000-0x00007fff				|
@@ -158,6 +155,7 @@ ultima_fila:
 ;|		0x00016000-0x00016fff -> 0x00016000-0x00016fff				|
 ;|		0x00018000-0x00018fff -> 0x000b8000-0x000b8fff				|
 ;|		0x000a0000-0x000bffff -> 0x000a0000-0x000bffff				|
+;|		------------------------------------------------			|
 ;|		El directorio de tablas de paginas de la tarea pintor:			|
 ;|		info tab:								|
 ;|		CR3 = 0x000A000								|
@@ -172,14 +170,17 @@ ultima_fila:
 ;|											|
 ;|**************************************************************************************|
 
-	;habilito paginacion	
+		;habilitando paginacion	
+	; 1
 	mov eax, 0x0000B000		;cargo la direccion del directorio de paginas en cr3
 	mov cr3, eax
 
+	; 2
 	mov eax, cr0				
 	or  eax, 0x80000000		;habilito paginacion
 	mov cr0, eax
 
+	; 3
 	IMPRIMIR_TEXTO nombre_grupo, nombre_grupo_len, 0xbe, 1, 10, 0x13000
 	; direccion 0x13000 mapeada a memoria de video
 
@@ -194,13 +195,17 @@ ultima_fila:
 ;|											|
 ;|**************************************************************************************|
 
+	; 1
 	call	idtFill		; inicializa la idt
 
+	; 2
 	lidt [IDT_DESC]		; carga en el registro idtr el descriptor de idt
 
+	; 3
 	call	pic_reset	; reset del pic
 	call	pic_enable	; activacion del pic
 
+	; 4
 	sti			; habilitacion de interrupciones
 
 ;|**************************************************************************************|
@@ -221,12 +226,12 @@ ultima_fila:
 ;|				- EJERCICIO 4 -						|
 ;|	1-Se colocan 3 descriptores de tss en la gdt:					|
 ;|		*descriptor de la tss de la tarea del kernel: Esta tss se usa solo para |
-;|		el primer cambio de tarea, Se encuentra la tss vacia para completarse.	|
+;|		el primer cambio de tarea, se encuentra la tss vacia para completarse.	|
 ;|		tss[0] = contexto actual (kernel)					|
-;|		*descriptor de la tss de la tarea del traductr: 			|
-;|		tss[1] = contexto del traductor: se completa correctamente		|
+;|		*descriptor de la tss de la tarea del traductor: 			|
+;|		tss[1] = contexto del traductor: se completa dinamicamente (**)		|
 ;|		*descriptor de la tss de la tarea del pintor: 				|
-;|		tss[2] = contexto del pintor: se completa correctamente			|
+;|		tss[2] = contexto del pintor: se completa dinamicamente (***)		|
 ;|		Los 3 descriptores son de este estilo, con sus respectivas bases	|
 ;|	**************************************************************************	|
 ;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
@@ -235,30 +240,33 @@ ultima_fila:
 ;|	*|base 15:00				|Seg. limit 15:00		|*	|
 ;|	*|0x0000 (se completa dinamicamente)(*)	|0x0067	(103)			|*	|
 ;|	**************************************************************************	|
-;|	|		TSS TRADUCTOR		|		TSS PINTOR		|
-;|	|	ESP0 = 0x17000 - 0x4		|ESP0 = 0x16000 - 0x4			|
-;|	|	SS0 = ss = segmento datos = 0x10|SS0 = ss = segmentos datos = 0x10	|
-;|	|	CR3 = PDTRADU			|CR3 = PDPINTOR				|
-;|	|	EIP = TASK2INIT	inicio tarea	|EIP = TASK1INIT inicio tarea		|
-;|	|	EFLAGS = 0x202 (interrup. | 1 )	|EFLAGS = 0x202 (interrup. | 1 )	|
-;|	|	ESP y EBP = ESP0		|ESP y EBP = ESP0			|
-;|	|	ES,SS,DS,FS,GS = 0x10 seg.datos	|ES,SS,DS,FS,GS = 0x10 seg.datos	|
-;|	|	CS = 0x08 seg. codigo		|CS = 0x08 seg. codigo			|
-;|	|	i/o map = 0xFFFF		|i/o map = 0xFFFF			|
-;|											|
+;|	---------------------------------------------------------------------------	|
+;|			TSS TRADUCTOR		|		TSS PINTOR		|
+;|		ESP0 = 0x17000 - 0x4		|ESP0 = 0x16000 - 0x4			|
+;|		SS0 = ss = segmento datos = 0x10|SS0 = ss = segmentos datos = 0x10	|
+;|		CR3 = PDTRADU			|CR3 = PDPINTOR				|
+;|		EIP = TASK2INIT	inicio tarea	|EIP = TASK1INIT inicio tarea		|
+;|		EFLAGS = 0x202 (interrup. | 1 )	|EFLAGS = 0x202 (interrup. | 1 )	|
+;|		ESP y EBP = ESP0		|ESP y EBP = ESP0			|
+;|		ES,SS,DS,FS,GS = 0x10 seg.datos	|ES,SS,DS,FS,GS = 0x10 seg.datos	|
+;|		CS = 0x08 seg. codigo		|CS = 0x08 seg. codigo			|
+;|		i/o map = 0xFFFF		|i/o map = 0xFFFF			|
+;|	---------------------------------------------------------------------------	|
 ;|	2-se mueve al task register = 0x20 descriptor de tss kernel			|
 ;|	3-se hace un jmp far usando 0x30 descriptor de tss pintor:			|
 ;|		se reconoce a 0x30 como descriptor de tss y hace cambio de contexto	|
 ;|	4-Se coloca en el timer tick una rutina de cambio de tarea entre la 1 y la 2	|
-;|		se usa la variable contador que tiene la rutina next_clock modulo 2	|
-;|		para decidir en 0 y 2 => tarea pintor					|
-;|		para decidir en 1 y 3 => tarea traductor				|
+;|		en el archivo isr.asm, etiqueta _isr32:					|
+;|		se usa la variable isrnumero que tiene la rutina next_clock, modulo 2	|
+;|		(isrnumero mod 2) = 0 o 2 => tarea pintor				|
+;|		(isrnumero mod 2) = 1 o 3 => tarea traductor				|
 ;|											|
 ;|**************************************************************************************|
 
+	; 1
 	mov	edi, tsss
 
-; cargo en el descriptro de la gdt correspondiente a la tarea kernel, la base de la tss de la misma
+	; (*) cargo en el descriptro de la gdt correspondiente a la tarea kernel, la base de la tss de la misma
 	mov	esi, gdt
 	add	esi, (8*4 + 2)
 	mov	eax, edi
@@ -269,7 +277,7 @@ ultima_fila:
 	
 	add	edi, 104	; nos paramos en la segunda entry de la tabla de tss's
 
-; cargo en el descriptro de la gdt correspondiente a la tarea traductor, la base de la tss de la misma
+	; (*) cargo en el descriptro de la gdt correspondiente a la tarea traductor, la base de la tss de la misma
 	mov	esi, gdt
 	add	esi, (8*5 + 2)
 	mov	eax, edi
@@ -277,7 +285,8 @@ ultima_fila:
 	shr	eax, 16
 	mov	[esi + 4], al
 	mov	[esi + 7], ah
-;cargamos la informacion de la tarea traductor antes de saltar
+
+	; (**) cargamos la informacion de la tarea traductor antes de saltar
 	add	edi, 4
 	mov dword [edi], 0x17000 - 0x4
 	add	edi, 4
@@ -306,7 +315,8 @@ ultima_fila:
 	
 	mov	edi, tsss
 	add	edi, (104*2)	; estamos parados en la tercera posicion de la tss, para cargar la tss pintor
-	; cargo en el descriptro de la gdt correspondiente a la tarea pintor, la base de la tss de la misma
+
+	; (*) cargo en el descriptro de la gdt correspondiente a la tarea pintor, la base de la tss de la misma
 	mov	esi, gdt
 	add	esi, (8*6 + 2)
 	mov	eax, edi
@@ -314,7 +324,8 @@ ultima_fila:
 	shr	eax, 16
 	mov	[esi + 4], al
 	mov	[esi + 7], ah
-;cargamos la informacion de la tarea pintor
+
+	; (***) cargamos la informacion de la tarea pintor
 	add	edi, 4
 	mov dword [edi], (0x16000 - 0x4)
 	add	edi, 4
@@ -341,14 +352,12 @@ ultima_fila:
 	%endrep
 	add	edi, (6)
 	mov word [edi], 0xFFFF
-
-	;mov	eax, 30
-	;mov	ebx, 0
-	;div	bx
 	
+	; 2
 	mov	ax, 0x20
 	ltr	ax
-	xchg bx, bx
+	
+	; 3
 	jmp	0x30:0x0
 	jmp	$
 		
@@ -362,25 +371,25 @@ incbin "pintor.tsk"
 incbin "traductor.tsk"
 TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 
-; |*******************************************************************|
-;				Directorio de pagina de Pintor					
-; |*******************************************************************|
+; |*********************************************************************|
+;		Directorio de pagina de Pintor				|
+; |*********************************************************************|
 	dd	PTPINTOR | 3
 %rep	0x400 - 1
 	dd	0x00000000
 %endrep
 
 
-; |*******************************************************************|
-;				Directorio de pagina de Traductor					
-; |*******************************************************************|
+; |*********************************************************************|
+;		Directorio de pagina de Traductor			|
+; |*********************************************************************|
 	dd	PTTRADK | 3
 %rep	0x400 - 1
 	dd	0x00000000
 %endrep
-; |*******************************************************************|
-;				Tabla de pagina de Pintor					
-; |*******************************************************************|
+; |*********************************************************************|
+;		Tabla de pagina de Pintor				|
+; |*********************************************************************|
 %assign dir 0x0
 %rep	0x9			; 0-8
 	dd	dir | 3		;supervisor, read/write, not present
@@ -398,7 +407,7 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 	dd	0x0
 %endrep
 	dd	0x000B8003	; 19
-	dd	0x0			; 20
+	dd	0x0		; 20
 	dd	0x00015003	; 21
 %rep	162			; 22 - 183
 	dd	0x0
@@ -408,11 +417,11 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 	dd	0x0
 %endrep
 
-; |*******************************************************************|
-;				Tabla de pagina de Traductor					
-; |*******************************************************************|
+; |*********************************************************************|
+; |		Tabla de pagina de Traductor				|
+; |*********************************************************************|
 %assign dir 0x0
-%rep	0x8			; 0-7
+%rep	0x8			; 0 - 7
 	dd	dir | 3		;supervisor, read/write, not present
 %assign dir dir+4096
 %endrep	
@@ -429,14 +438,14 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 %rep	0x2			; 20 - 21
 	dd	0x0
 %endrep
-	dd 0x00016003	; 22
+	dd 0x00016003		; 22 
 	dd 0x0			; 23
-	dd 0x000B8003	;24
+	dd 0x000B8003		; 24
 %rep	135			; 25 - 159
 	dd 0x0
 %endrep
 %assign dir 0x000A0000
-%rep	0x20		; 160 - 191
+%rep	0x20			; 160 - 191
 	dd	dir | 3		;supervisor, read/write, not present
 %assign dir dir+4096
 %endrep	
