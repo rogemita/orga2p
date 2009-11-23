@@ -16,9 +16,9 @@
 %ifndef __MACROS_PROTEGIDO__
 %define __MACROS_PROTEGIDO__
 
-jmp	noejecutoesto
-contadorlineas:	dw 0x0000
-noejecutoesto:
+jmp	noejecutoestop
+contadorlineasp:	dw 0x0000
+noejecutoestop:
 
 %macro IMPRIMIR_TEXTO 6
 	pushad

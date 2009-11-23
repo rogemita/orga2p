@@ -1,15 +1,15 @@
 BITS 16
 
 %include "macrosmodoreal.mac"
+%include "macrosmodoprotegido.mac"
 
 global start
-extern GDT_DESC
-extern gdt;
-extern IDT_DESC
-extern idtFill
-extern tsss;
-extern idt
-extern _isr32
+extern GDT_DESC		; puntero al descriptor de gdt
+extern gdt;		; puntero a la gdt
+extern IDT_DESC		; puntero al descriptor de la idt
+extern idt		; puntero a la idt
+extern idtFill		; metodo para iniciar descriptores de la idt
+extern tsss;		; puntero a la tsss = arreglo de datos tss 
 
 
 ;Aca arranca todo, en el primer byte.
@@ -17,78 +17,119 @@ start:
 ; 		cli					;no me interrumpan por ahora, estoy ocupado
 ; 		jmp 	bienvenida
 ; 
-; ;aca ponemos todos los mensajes		
-; iniciando: db 'Iniciando el kernel mas inutil del mundo'
-; iniciando_len equ $ - iniciando		
-; 
-; 
-; bienvenida:
-; 	IMPRIMIR_MODO_REAL iniciando, iniciando_len, 0x07, 0, 0
-	; Ejercicios AQUI
+;aca ponemos todos los mensajes
+jmp inicio	
+nombre_grupo:		db 'Orga 2 POPA'
+nombre_grupo_len	equ $ - nombre_grupo		
 
-	; TODO: Habilitar A20
+; |*******************************************************************|
+;	enable_A20 = activacion del pin A20
+;	SI (Checkeo del pin A20): continuar SINO llamar a enable_A20
+; |*******************************************************************|
+inicio:
 	call check_A20
 	;xchg	bx, bx
 	cmp ax, 1
 	je deshabilitar_interrupciones
 	call enable_A20
 
-deshabilitar_interrupciones:	; TODO: Dehabilitar Interrupciones
+deshabilitar_interrupciones:	; deshabilitando interrupciones
+;|**************************************************************************************|
+;|				- EJERCICIO 1 -						|
+;|	1-Se deshabilitan las interrupciones hasta que se inicialize			|
+;|		una IDT con sus rutinas respectivas de atencion				|
+;|	2-Se carga el descriptor de gdt en el registro gdt (base|limite)		|
+;|	3-En el cr0 se habilita el bit de modo protegido, bit 0				|
+;|	4-Se utiliza un salto largo para pasar a modo protegido				|
+;|		usando 0x08 como selector de gdt:					|
+;|		[ index=0000000000001 | TI=0 (GDT)| RPL=00 (maximo privilegio)]		|
+;|		segundo descriptor de segmento de la gdt, perteneciente al segmento	|
+;|		de codigo:								|
+;|	**************************************************************************	|
+;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
+;|	*|   0x00   |1| 1 |0| 0 |	0xF	|1|  00   |1|  0xA   |    00    |* 	|
+;|	*|----------------------------------------------------------------------|*	|
+;|	*|base 15:00				|Seg. limit 15:00		|*	|
+;|	*|0x0000				|0xFFFF				|*	|
+;|	**************************************************************************	|
+;|	5-Una vez pasado a modo protegido: se inicializan los selectores de segmentos	|
+;|		de datos con el selector de gdt:					|
+;|		[ index=0000000000010 | TI=0 (GDT)| RPL=00 (maximo privilegio)]		|
+;|		 con el descriptor de datos:						|
+;|	**************************************************************************	|
+;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
+;|	*|   0x00   |1| 1 |0| 0 |	0xF	|1|  00   |1|  0x2   |    00    |* 	|
+;|	*|----------------------------------------------------------------------|*	|
+;|	*|base 15:00				|Seg. limit 15:00		|*	|
+;|	*|0x0000				|0xFFFF				|*	|
+;|	**************************************************************************	|
+;|	6-Al registro ES momentaneamente lo cargamos con el tercer descriptor de la gdt:|
+;|		[ index=0000000000010 | TI=0 (GDT)| RPL=00 (maximo privilegio)]		|
+;|		este descriptor contiene un segmento solo destinado para la matriz	|
+;|		de video mapeada desde la posicion 0xB8000 de memoria, size=80*25*2bytes|
+;|	**************************************************************************	|
+;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
+;|	*|   0x00   |0| 1 |0| 0 |	0x0	|1|  00   |1|  0x2   |    0B    |* 	|
+;|	*|----------------------------------------------------------------------|*	|
+;|	*|base 15:00				|Seg. limit 15:00		|*	|
+;|	*|0x8000				|0x0F9F				|*	|
+;|	**************************************************************************	|
+;|		se limpia la pantalla colocando caracter vacio de fondo negro (ax=0x00)	|
+;|		usando la funcion stosw ( [es:edi] = ax ).				|
+;|		De la misma forma se recorre la matriz colocando solo en los bordes	|
+;|		un caracter deseado armando asi un recuadro como pide el enunciado 1.c	|
+;|											|
+;|**************************************************************************************|
 
-	; Ejercicio 1
+	; 1
+	cli	; PREGUNTAR: esta bien que este aca? la parte de arriba no lo necesita? comienzan a andar las interrupciones en modo protegido?
 		
-		; TODO: Cargar el registro GDTR
-		
-		; TODO: Pasar a modo protegido
-
-	;deshabilitamos las interrupciones
-	cli
-		
-	;cargamos la gdt
+	; 2
 	lgdt		[GDT_DESC]
-	;xchg	bx, bx		
-	;seteamos el bit PE del registro cr0
+	; 3
 	mov		eax, cr0
 	or		eax, 01h
 	mov		cr0, eax
 	
-	;segundo segmento en la GDT, el primero es nulo
+	; 4
 	jmp		0x08:modo_protegido
 
-BITS 32
+	; 5
+BITS 32	; ahora trabajando con 32 bits
 modo_protegido:
-	;xchg	bx, bx
-	mov	ax, 0x0010
+	mov	ax, 0x10	; segmento de datos
 	mov	ds, ax
 	mov	fs, ax
 	mov	gs, ax
 	mov	ss, ax
 
-	mov	ax, 0x0018
+	; 6
+	mov	ax, 0x18	; segmento de memoria de video
 	mov	es, ax
 	xor	edi, edi
-	;mov	edi, 162					;paso a la fila de abajo y salteo la primer columna
+	mov	ecx, (80*25)
+	xor eax, eax
+
+limpiar_pantalla:
+	stosw
+	loop limpiar_pantalla
+
+	xor	edi, edi
+	mov	ax, 0xbefe
 	mov	ecx, 80
-	mov	ax, 0xbe32
-	;mov	edx, ecx
 
 primer_fila:
 	stosw
 	loop	primer_fila
 
 	mov ecx, 25-2
-	
+
 medio:
 	mov	[es:edi], ax
 	add	edi, (80-1)*2
 	mov	[es:edi], ax
 	inc	edi
 	inc	edi
-	;je		seguir
-	;dec		ebx
-	;add		edi, 4
-	;mov	ecx, edx
-	;jmp		ciclo_x
 	loop	medio
 
 	mov	ecx, 80
@@ -96,79 +137,125 @@ medio:
 ultima_fila:
 	stosw
 	loop	ultima_fila
-	
-	;lodsb -> al, [ds:esi] y este aumenta esi en lo que sea
-	;stosw -> escribe en es:edi y ademas aumenta edi en 2 bytes (lo que sea)
 
-	;jmp $
-
-	; Ejercicio 2
-		
-		; TODO: Habilitar paginacion
-	;xchg bx, bx
-	; Ejercicio 3
-
-	;Esto va en la rutina de interrupciones!!
 	mov	ax, 0x10
-	mov	es, ax
-	
+	mov	es, ax		; doy segmento de datos a es como el resto
+
+	;stosw -> escribe lo que esta en ax en [es:edi] y ademas aumenta edi en 2 bytes
+
+;|**************************************************************************************|
+;|				- EJERCICIO 2 -						|
+;|	la definicion de directorios y tablas de paginas se encuentra en la etiqueta:	|
+;|		inicializacion_directorios_y_tablas_de_paginas				|
+;|	1-En cr3 se guarda la posicion donde comienza el directorio de tablas de paginas|
+;|		perteneciente al kernel, directorio que comparte con el traductor.	|
+;|		Uso una entry para apuntar a una primer tabla de paginas:		|
+;|		info tab:								|
+;|		CR3 = 0x000B000								|
+;|		0x00000000-0x00007fff -> 0x00000000-0x00007fff				|
+;|		0x00009000-0x00010fff -> 0x00009000-0x00010fff				|
+;|		0x00013000-0x00013fff -> 0x000b8000-0x000b8fff				|
+;|		0x00016000-0x00016fff -> 0x00016000-0x00016fff				|
+;|		0x00018000-0x00018fff -> 0x000b8000-0x000b8fff				|
+;|		0x000a0000-0x000bffff -> 0x000a0000-0x000bffff				|
+;|		El directorio de tablas de paginas de la tarea pintor:			|
+;|		info tab:								|
+;|		CR3 = 0x000A000								|
+;|		primer tabla de paginas:						|
+;|		0x00000000-0x00008fff -> 0x00000000-0x00008fff				|
+;|		0x0000e000-0x0000ffff -> 0x0000e000-0x0000ffff				|
+;|		0x00013000-0x00013fff -> 0x000b8000-0x000b8fff				|
+;|		0x00015000-0x00015fff -> 0x00015000-0x00015fff				|
+;|		0x000b8000-0x000b8fff -> 0x00010000-0x00010fff				|
+;|	2-Habilito paginacion seteando el ultimo bit de cr0				|
+;|	3-Imprimimos el nombre del grupo como indica el enunciado			|
+;|											|
+;|**************************************************************************************|
+
 	;habilito paginacion	
-	mov eax, 0x0000B000		;cargo la direccion del directorio en cr3
+	mov eax, 0x0000B000		;cargo la direccion del directorio de paginas en cr3
 	mov cr3, eax
 
 	mov eax, cr0				
 	or  eax, 0x80000000		;habilito paginacion
 	mov cr0, eax
-	;xchg bx, bx
 
+	IMPRIMIR_TEXTO nombre_grupo, nombre_grupo_len, 0xbe, 1, 10, 0x13000
+	; direccion 0x13000 mapeada a memoria de video
 
-	mov	eax, idt
-	add	eax, 32*8
-	call	idtFill
-; 	mov dword	[eax], _isr32
-; 	mov dword	[eax+4], _isr32
-; 	mov word	[eax+2], 0x0008
-; 	mov word	[eax+4], 0x8E00
+;|**************************************************************************************|
+;|				- EJERCICIO 3 -						|
+;|	1-Se completan las entries en la idt con las rutinas de atencion, las cuales	|
+;|		se encuentran implementadas en isr.asm					|
+;|	2-Coloco en el registro de idt el descriptor de idt				|
+;|	3-Llamo a las rutinas para resetear el pic y para habilitarlo			|
+;|	4-Por ultimo con la idt completada y sus correspondientes rutinas se habilitan	|
+;|		las interrupciones ya que estas pueden ser atendidas ahora		|
+;|											|
+;|**************************************************************************************|
 
-	lidt [IDT_DESC]
+	call	idtFill		; inicializa la idt
 
-	call	pic_reset
-	call	pic_enable
+	lidt [IDT_DESC]		; carga en el registro idtr el descriptor de idt
 
-	sti
-	;jmp sigue
+	call	pic_reset	; reset del pic
+	call	pic_enable	; activacion del pic
 
-		; TODO: Inicializar la IDT
-		
-		; TODO: Resetear la pic
-		
-		; TODO: Cargar el registro IDTR
-				
-	; Ejercicio 4
-	
-		; TODO: Inicializar las TSS
-		
-		; TODO: Inicializar correctamente los descriptores de TSS en la GDT
-		
-		; TODO: Cargar el registro TR con el descriptor de la GDT de la TSS actual
-		
-		; TODO: Habilitar la PIC
-		
-		; TODO: Habilitar Interrupciones
-		
-		; TODO: Saltar a la primer tarea
+	sti			; habilitacion de interrupciones
 
-%define TASK1INIT	0x8000
-%define TASK2INIT	0x9000
-%define PDPINTOR	0xA000
-%define PDTRADU		0xB000
-%define PTPINTOR	0xC000
-%define PTTRADK		0xD000
-%define STACKTR		0x16000
-%define STACKPT		0x15000
-%define KORG		0x1200
+;|**************************************************************************************|
+;|				- Algunos defines -					|
+;|**************************************************************************************|
 
-	;xchg bx, bx
+%define TASK1INIT	0x8000	; inicio tarea pintor
+%define TASK2INIT	0x9000	; inicio tarea traductor
+%define PDPINTOR	0xA000	; page directory de pintor
+%define PDTRADU		0xB000	; page directory de traductor y kernel
+%define PTPINTOR	0xC000	; tabla de paginas de pintor
+%define PTTRADK		0xD000	; tabla de paginas de traductor y kernel
+%define STACKTR		0x16000	; pila del traductor
+%define STACKPT		0x15000	; pila del pintor 
+%define KORG		0x1200	; comienzo del codigo de kernel
+
+;|**************************************************************************************|
+;|				- EJERCICIO 4 -						|
+;|	1-Se colocan 3 descriptores de tss en la gdt:					|
+;|		*descriptor de la tss de la tarea del kernel: Esta tss se usa solo para |
+;|		el primer cambio de tarea, Se encuentra la tss vacia para completarse.	|
+;|		tss[0] = contexto actual (kernel)					|
+;|		*descriptor de la tss de la tarea del traductr: 			|
+;|		tss[1] = contexto del traductor: se completa correctamente		|
+;|		*descriptor de la tss de la tarea del pintor: 				|
+;|		tss[2] = contexto del pintor: se completa correctamente			|
+;|		Los 3 descriptores son de este estilo, con sus respectivas bases	|
+;|	**************************************************************************	|
+;|	*|base 31:24|G|D/B|L|AVL|Seg.Limit 19:16|P|DPL (2)|S|TYPE (4)|base 23:16|*	|
+;|	*|   0x00(*)|0| 1 |0| 0 |	0x0	|1|  00   |0|  0x9   |    00(*) |* 	|
+;|	*|----------------------------------------------------------------------|*	|
+;|	*|base 15:00				|Seg. limit 15:00		|*	|
+;|	*|0x0000 (se completa dinamicamente)(*)	|0x0067	(103)			|*	|
+;|	**************************************************************************	|
+;|	|		TSS TRADUCTOR		|		TSS PINTOR		|
+;|	|	ESP0 = 0x17000 - 0x4		|ESP0 = 0x16000 - 0x4			|
+;|	|	SS0 = ss = segmento datos = 0x10|SS0 = ss = segmentos datos = 0x10	|
+;|	|	CR3 = PDTRADU			|CR3 = PDPINTOR				|
+;|	|	EIP = TASK2INIT	inicio tarea	|EIP = TASK1INIT inicio tarea		|
+;|	|	EFLAGS = 0x202 (interrup. | 1 )	|EFLAGS = 0x202 (interrup. | 1 )	|
+;|	|	ESP y EBP = ESP0		|ESP y EBP = ESP0			|
+;|	|	ES,SS,DS,FS,GS = 0x10 seg.datos	|ES,SS,DS,FS,GS = 0x10 seg.datos	|
+;|	|	CS = 0x08 seg. codigo		|CS = 0x08 seg. codigo			|
+;|	|	i/o map = 0xFFFF		|i/o map = 0xFFFF			|
+;|											|
+;|	2-se mueve al task register = 0x20 descriptor de tss kernel			|
+;|	3-se hace un jmp far usando 0x30 descriptor de tss pintor:			|
+;|		se reconoce a 0x30 como descriptor de tss y hace cambio de contexto	|
+;|	4-Se coloca en el timer tick una rutina de cambio de tarea entre la 1 y la 2	|
+;|		se usa la variable contador que tiene la rutina next_clock modulo 2	|
+;|		para decidir en 0 y 2 => tarea pintor					|
+;|		para decidir en 1 y 3 => tarea traductor				|
+;|											|
+;|**************************************************************************************|
+
 	mov	edi, tsss
 
 ; cargo en el descriptro de la gdt correspondiente a la tarea kernel, la base de la tss de la misma
@@ -192,7 +279,6 @@ ultima_fila:
 	mov	[esi + 7], ah
 ;cargamos la informacion de la tarea traductor antes de saltar
 	add	edi, 4
-	;mov	[edi], esp
 	mov dword [edi], 0x17000 - 0x4
 	add	edi, 4
 	mov word [edi], ss
@@ -254,7 +340,11 @@ ultima_fila:
 		stosd		; les doy el segmento de dato
 	%endrep
 	add	edi, (6)
-	mov word [edi], 0xFFFF	
+	mov word [edi], 0xFFFF
+
+	;mov	eax, 30
+	;mov	ebx, 0
+	;div	bx
 	
 	mov	ax, 0x20
 	ltr	ax
@@ -264,6 +354,8 @@ ultima_fila:
 		
 %include "a20.asm"
 %include "pic.asm"
+
+inicializacion_directorios_y_tablas_de_paginas:
 
 TIMES TASK1INIT - KORG - ($ - $$) db 0x00
 incbin "pintor.tsk"
