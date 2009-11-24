@@ -133,7 +133,7 @@
 ;========================
 %macro aplicarOperadorY 2-3 0
 	movdqu		xmm5, %1			;cargo el primer registro y enmascaro para pasar a word
-	armarMascara	xmm7
+	armarMascara	xmm7, 0
 	pand		xmm5, xmm7
 	cvtdq2ps	xmm5, xmm5			;convierto a precision simple
 	
@@ -166,7 +166,7 @@
       
 	movdqu		xmm6, %2
 	pslldq		xmm6, 1
-	armarMascara	xmm7
+	armarMascara	xmm7, 0
 	pand		xmm6, xmm7
 	cvtdq2ps	xmm6, xmm6
 	cargarRaiz2	xmm7
@@ -174,15 +174,34 @@
 	subps		xmm5, xmm6
 
 	cvttps2dq	xmm5, xmm5
+
+
+
+
+	armarMascara	xmm7, %3
+	pand		xmm5, xmm7
+
 	pxor		xmm6, xmm6
+
+;ABS
+; 	movdqu		xmm7, xmm5
+; 	psrad		xmm7, 31
+; 	pxor		xmm5, xmm7
+; 	psubd		xmm5, xmm7
+
+;SATURATION
+	movdqu		xmm7, xmm5
+	pcmpgtd		xmm7, xmm6
+	pand		xmm5, xmm7
+	
 	packssdw	xmm5, xmm6
 	packsswb	xmm5, xmm6
 	punpcklbw	xmm5, xmm6	;saturo los pixeles
 	punpcklwd	xmm5, xmm6	;saturo los pixeles
-	movdqu		xmm6, [eax]
-	por		xmm5, xmm6
+ 	movdqu		xmm6, [eax]	
+ 	por		xmm5, xmm6	
 	movdqu		[eax], xmm5		;copio los pixeles
- 	inc eax
+	inc		eax
  	psrldq		%1, 1
  	psrldq		%2, 1
 
@@ -197,11 +216,14 @@
 ;========================
 
 ;000000ff000000ff 000000ff00000000
-%macro armarMascara 1
+%macro armarMascara 2
 	pcmpeqb	%1, %1		;armo la mascara, paso todo a uno
+	pslld	%1, 24
 	psrld	%1, 24
-	psrldq	%1, 1
-	pslldq	%1, 1
+%if %2  <> 0
+	psrldq	%1, 4
+	pslldq	%1, 4
+%endif
 %endmacro
 ;========================
 ; MACRO freichenY
@@ -214,13 +236,12 @@
 %macro	freiChenY 2
 	; PROCESO PIXEL 3,7,11,15
 	aplicarOperadorY %1, %2, 1
-	; PROCESO PIXEL 2,6,10,14
+	;PROCESO PIXEL 2,6,10,14
 	aplicarOperadorY %1, %2
 	; PROCESO PIXEL 1,5,9,13
 	aplicarOperadorY %1, %2
 	; PROCESO PIXEL 0,4,8,12
 	aplicarOperadorY %1, %2
-	;sub	eax, 3
 	add		eax, edx	;salto la linea siguiente
 %endmacro
 
@@ -261,12 +282,6 @@
 	cvtdq2ps	xmm0, xmm0
 	sqrtps	xmm0, xmm0
 	movdq2q	mm7, xmm0
-	
-; 	finit
-; 	fld1
-; 	fld1
-; 	faddp
-;  	fsqrt				;consigo la raiz de dos en st0
 
 	mov	eax, XORDER
 
