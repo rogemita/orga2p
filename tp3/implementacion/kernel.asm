@@ -13,13 +13,11 @@ extern tsss;		; puntero a la tsss = arreglo de datos tss
 
 
 start:
-; 		cli
 
 jmp inicio	
 nombre_grupo:		db 'Orga 2 POPA'
 nombre_grupo_len	equ $ - nombre_grupo		
 
-inicio:
 ;|**************************************************************************************|
 ;|				- EJERCICIO 1 -						|
 ;|	1-Se deshabilitan las interrupciones hasta que se inicialize			|
@@ -70,6 +68,7 @@ inicio:
 ;|											|
 ;|**************************************************************************************|
 
+inicio:
 	; 1
 	cli
 	
