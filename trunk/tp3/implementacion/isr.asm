@@ -9,44 +9,45 @@ extern pic1_intr_end
 ; ----------------------------------------------------------------
 
 global _isr0, _isr5, _isr6, _isr7, _isr9, _isr10, _isr11, _isr12, _isr13, _isr14, _isr16, _isr17, _isr19, _isr32
-msgisr0: db 'EXCEPCION: Division por cero'
+msgisr0: db 'Divide Error (Fault)'
 msgisr0_len equ $-msgisr0
-msgisr1: db 'EXCEPCION: '
+msgisr1: db 'RESERVED'
 msgisr1_len equ $-msgisr1
-msgisr2: db 'EXCEPCION: '
+msgisr2: db 'NMI Interrupt (Interrupt)'
 msgisr2_len equ $-msgisr2
-msgisr3: db 'EXCEPCION: '
+msgisr3: db 'Breakpoint (Trap)'
 msgisr3_len equ $-msgisr3
-msgisr4: db 'EXCEPCION: '
+msgisr4: db 'Overflow (Trap)'
 msgisr4_len equ $-msgisr4
-msgisr5: db 'EXCEPCION: BOUND Range Exceeded'
+msgisr5: db 'BOUND Range Exceeded (Fault)'
 msgisr5_len equ $-msgisr5
-msgisr6: db 'EXCEPCION: Codigo de operacion invalido'
+msgisr6: db 'Invalid Opcode (Undefined Opcode) (Fault)'
 msgisr6_len equ $-msgisr6
-msgisr7: db 'EXCEPCION: Device Non Avalible (No Math Coprocessor)'
+msgisr7: db 'EXCEPCION: Device Non Avalible (No Math Coprocessor) (Fault)'
 msgisr7_len equ $-msgisr7
-msgisr8: db 'EXCEPCION: '
+msgisr8: db 'Double Fault (Abort)'
 msgisr8_len equ $-msgisr8
-msgisr9: db 'EXCEPCION: Coprocessor Segment Overrun'
+msgisr9: db 'Coprocessor Segment Overrun (reserved) (Fault)'
 msgisr9_len equ $-msgisr9
-msgisr10: db 'EXCEPCION: TSS Invalida'
+msgisr10: db 'Invalid TSS (Fault)'
 msgisr10_len equ $-msgisr10
-msgisr11: db 'EXCEPCION: Segmento No Presente'
+msgisr11: db 'Segment Not Present (Fault)'
 msgisr11_len equ $-msgisr11
-msgisr12: db 'EXCEPCION: Stack-Segment Fault '
+msgisr12: db 'Stack-Segment Fault (Fault) '
 msgisr12_len equ $-msgisr12
-msgisr13: db 'EXCEPCION: Proteccion General'
+msgisr13: db 'General Protection (Fault)'
 msgisr13_len equ $-msgisr13
-msgisr14: db 'EXCEPCION: Pagina No Presente'
+msgisr14: db 'Page Fault (Fault)'
 msgisr14_len equ $-msgisr14
-msgisr16: db 'EXCEPCION: Error De Punto Flotante'
+msgisr16: db 'x87 FPU Floating-Point Error (Math Fault)'
 msgisr16_len equ $-msgisr16
-msgisr17: db 'EXCEPCION: Alignment Check'
+msgisr17: db 'Alignment Check (Fault)'
 msgisr17_len equ $-msgisr17
-msgisr19: db 'EXCEPCION: Error De Punto Flotante En SIMD'
+msgisr18: db 'Machine Check (Abort)'
+msgisr18_len equ $-msgisr18
+msgisr19: db 'SIMD Floating-Point Exception'
 msgisr19_len equ $-msgisr19
-; msgisr: db 'EXCEPCION: '
-; msgisr_len equ $-msgisr
+
 _isr0:
 	mov edx, msgisr0
 	IMPRIMIR_TEXTO edx, msgisr0_len, 0x0C, 0, 0, 0x13000
