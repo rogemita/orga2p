@@ -19,22 +19,14 @@ jmp inicio
 nombre_grupo:		db 'Orga 2 POPA'
 nombre_grupo_len	equ $ - nombre_grupo		
 
-; |*******************************************************************|
-;	enable_A20 = activacion del pin A20
-;	SI (Checkeo del pin A20): continuar SINO llamar a enable_A20
-; |*******************************************************************|
 inicio:
-	call check_A20
-	cmp ax, 1
-	je deshabilitar_interrupciones
-	call enable_A20
-
-deshabilitar_interrupciones:	; deshabilitando interrupciones
 ;|**************************************************************************************|
 ;|				- EJERCICIO 1 -						|
 ;|	1-Se deshabilitan las interrupciones hasta que se inicialize			|
 ;|		una IDT con sus rutinas respectivas de atencion				|
-;|	2-Se carga el descriptor de gdt en el registro gdtr (base|limite)		|
+;|	2-enable_A20 = activacion del pin 20						|
+;|		SI (Checkeo del pin A20): continuar SINO llamar a enable_A20		|
+;|		Se carga el descriptor de gdt en el registro gdtr (base|limite)		|
 ;|	3-En el cr0 se habilita el bit de modo protegido, bit 0				|
 ;|	4-Se utiliza un jmp far para pasar a modo protegido				|
 ;|		usando 0x08 como selector de gdt, asi cs vale 0x08 de a partir de ahora	|
@@ -79,10 +71,17 @@ deshabilitar_interrupciones:	; deshabilitando interrupciones
 ;|**************************************************************************************|
 
 	; 1
-	cli	; PREGUNTAR: esta bien que este aca? la parte de arriba no lo necesita? comienzan a andar las interrupciones en modo protegido?
-		
+	cli
+	
 	; 2
+	call check_A20	
+ 	cmp ax, 1
+ 	je continuar
+	call enable_A20	
+
+continuar:
 	lgdt		[GDT_DESC]
+
 	; 3
 	mov		eax, cr0
 	or		eax, 01h
@@ -372,7 +371,7 @@ incbin "traductor.tsk"
 TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 
 ; |*********************************************************************|
-;		Directorio de pagina de Pintor				|
+;		Directorio de paginas de Pintor				|
 ; |*********************************************************************|
 	dd	PTPINTOR | 3
 %rep	0x400 - 1
@@ -381,14 +380,14 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 
 
 ; |*********************************************************************|
-;		Directorio de pagina de Traductor			|
+;		Directorio de paginas de Traductor			|
 ; |*********************************************************************|
 	dd	PTTRADK | 3
 %rep	0x400 - 1
 	dd	0x00000000
 %endrep
 ; |*********************************************************************|
-;		Tabla de pagina de Pintor				|
+;		Tabla de paginas de Pintor				|
 ; |*********************************************************************|
 %assign dir 0x0
 %rep	0x9			; 0-8
@@ -418,7 +417,7 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 %endrep
 
 ; |*********************************************************************|
-; |		Tabla de pagina de Traductor				|
+; |		Tabla de paginas de Traductor				|
 ; |*********************************************************************|
 %assign dir 0x0
 %rep	0x8			; 0 - 7
