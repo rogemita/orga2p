@@ -1,0 +1,385 @@
+\documentclass[11pt]{article}
+\usepackage [spanish,active acute] {babel}
+\usepackage{a4wide}
+\usepackage{listings}
+\lstset{language={[x86masm]Assembler}, basicstyle=\small, numbers=left, numberstyle=\tiny}
+%\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmic}[1]
+
+\frenchspacing
+\title{
+\begin{centering}
+Universidad de Buenos Aires \\
+Facultad de Ciencias Exactas y Naturales \\
+Departamento de Ciencias de la Computaci\'on \\
+\vskip 25pt
+\bf Organizaci\'on del computador II \\
+\bf Segundo cuatrimestre 2009 
+\end{centering}
+}
+\author{
+Grupo: \textsc{POPA} \\
+\begin{tabular}[t]{|l|l|l|}
+\hline
+\textbf{Apellido y nombre} & \textbf{L.U.} & \textbf{mail} \\
+\hline 
+\hline
+Cerrutti, Mariano Javier  & 525/07 & vscorza@gmail.com \\
+\hline
+Huel, Federico Ariel  & 329/07 & federico.huel@gmail.com \\
+\hline
+Mita, Rogelio Iv\'an  & 635/07 & rogeliomita@gmail.com \\
+\hline
+\end{tabular}
+}
+\date{24 de Noviembre de 2009} 
+
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+
+\newpage
+\section{Archivos adjuntos}
+\textsc{Implementaci'on} 
+\begin{itemize}
+\item src:
+\subitem \textit{bordes.c}
+\subitem \textit{asmSobel.asm}
+\subitem \textit{asmPrewitt.asm}
+\subitem \textit{asmRoberts.asm}
+\item img:
+\subitem \textit{lena.bmp}
+\end{itemize}
+
+\textsc{Includes}
+\begin{itemize}
+\item \textit{offset.inc} 
+\item \textit{macros.mac} 
+\end{itemize}
+
+\textsc{Enunciado} 
+\begin{itemize}
+\item \textit{EnunciadoTP3.pdf}  
+\end{itemize}
+
+\textsc{Informe} 
+\begin{itemize}
+\item \textit{TP3.pdf}
+\end{itemize}
+
+\newpage
+\section{Introducci'on}
+Este trabajo tiene como objetivo implementar un peque'no kernel para fijar los conceptos de system programing adquiridos durante la segunda parte de la materia, usando lo visto en las clases te'oricas y en los talleres. A continuaci'on describiremos las partes esenciales del kernel. 
+
+\section{Kernel}
+\subsection{Bootloader} El bootloader fu'e provisto por la c'atedra.
+\subsection{Modo Real}
+Se utiliza un modelo flat de sementaci'on usando un segmento de 4Gb. para c'odigo y otro de 4Gb. para datos. Este modelo carece de seguridad ya que la idea es reducir la complejidad de manipulaci'on de la unidad de segmentaci'on, solapando ambos segmentos siguiendo un modelo sencillo, como lo es el aplicado, y luego proporcionarle seguridad mediante la unidad de paginaci'on.
+\subsection{Modo Protegido}
+Se aplica paginaci'on sobre el modelo de segmentaci'on y se prepara para que sea capaz de intercambiar entre dos tareas proporcionadas por la c'atedra. Aqui la seguridad se ve reflejada al asignarle a cada tarea su propio sector de memoria, sea tanto para c'odigo, como para datos, y de esta forma cada tarea queda limitada a su contexto. Para realizar dicho intercambio se utilizando como medio, la interrupci'on producida por el timer tick, ya que esta est'a presente constantemente cada un lapso de tiempo 'infimo.
+
+\section{Ejercicio 1}
+\subsection{Introducci'on} En este ejercicio vamos a completar la tabla global de descriptores (GDT) con tre segmentos, uno de datos, uno de c'odigo, y otro s'olo para la matriz de memoria de video (80*25 celdas de 2 bytes). Cabe destacar que en los siguientes ejercicios se agregaran tres segmentos mas con descriptores de tss que luego detallaremos. Luego se pasa a modo protegido y se realiza una rutina para limpiar la pantalla y armar un recuadro.
+\subsection{Pasos de implementaci'on}
+\begin{enumerate}
+\item Lo primero que hace es deshabilitar las interrupciones hasta que se posea una rutina de atenci'on para cada una de ellas.
+\begin{lstlisting}[frame=single]
+	cli
+\end{lstlisting}
+\item 
+Luego se hace el checkeo del pin A20, si es necesario se lo habilita y asi disponer de mas direccionamiento a memoria. \\ La gdt se define en c'odigo c en el archivo gdt.c, sus estructuras se encuentran en gdt.h donde tambi'en se encuentra su descriptor con base y l'imite. Una vez creada la gdt, se carga el gdt descriptor en el gdtr para que tengamos registro de la posici'on en la que se encuentra.
+\begin{lstlisting}[frame=single]
+	call check_A20	
+ 	cmp ax, 1
+ 	je continuar
+	call enable_A20	
+
+continuar:
+	lgdt	[GDT_DESC]
+\end{lstlisting}
+
+\item Se completa la gdt con los siguientes descriptores, en la posici'on 0 de la gdt debe ir el descriptor nulo seg'un lo indica el manual de Intel, esto se hace en el archivo gdt.c:
+
+\begin{center} Segmento de codigo
+\begin{tabular}[t]{|c c c c c c|c c c c c|}
+\hline
+\textbf{base 3} & \textbf{G} & \textbf{D/B} & \textbf{L} & \textbf{AVL} & \textbf{Seg. limit 2} & \textbf{P} & \textbf{DPL} & \textbf{S} & \textbf{TYPE} & \textbf{base 2} \\
+0x00 & 1 & 1 & 0 & 0 & 0xF & 1 & 00 & 1 & 0xA & 00 \\
+\hline
+& & & & & \textbf{base 1} & & & & & \textbf{Seg. limit 1} \\
+& & & & & 0x0000 & & & & & 0xFFFF  \\
+\hline
+\end{tabular}
+\end{center}
+\begin{lstlisting}[frame=single]
+// 0000000000001 | 000 = 0x08
+	(gdt_entry){ 
+		(unsigned short) 0xFFFF, 
+		(unsigned short) 0x0000,
+		(unsigned char) 0x00, 
+		(unsigned char) 0xA, 
+		(unsigned char) 1, 
+		(unsigned char) 0, 
+		(unsigned char) 1, 
+		(unsigned char) 0xF,
+		(unsigned char) 0,  
+		(unsigned char) 0,  
+		(unsigned char) 1,  
+		(unsigned char) 1, 
+		(unsigned char) 0x00 
+	},
+\end{lstlisting}
+
+\begin{center} Segmento de datos
+\begin{tabular}[t]{|c c c c c c|c c c c c|}
+\hline
+\textbf{base 3} & \textbf{G} & \textbf{D/B} & \textbf{L} & \textbf{AVL} & \textbf{Seg. limit 2} & \textbf{P} & \textbf{DPL} & \textbf{S} & \textbf{TYPE} & \textbf{base 2} \\
+0x00 & 1 & 1 & 0 & 0 & 0xF & 1 & 00 & 1 & 0x2 & 00 \\
+\hline
+& & & & & \textbf{base 1} & & & & & \textbf{Seg. limit 1} \\
+& & & & & 0x0000 & & & & & 0xFFFF  \\
+\hline
+\end{tabular}
+\end{center}
+\begin{lstlisting}[frame=single]
+// 0000000000010 | 000 = 0x10
+	(gdt_entry){ 
+		(unsigned short) 0xFFFF, 
+		(unsigned short) 0x0000,
+		(unsigned char) 0x00, 
+		(unsigned char) 0x2, 
+		(unsigned char) 1, 
+		(unsigned char) 0,
+		(unsigned char) 1, 
+		(unsigned char) 0xF,
+		(unsigned char) 0,  
+		(unsigned char) 0,  
+		(unsigned char) 1,  
+		(unsigned char) 1, 
+		(unsigned char) 0x00 
+	},
+\end{lstlisting}
+
+\begin{center} Segmento de video 
+\begin{tabular}[t]{|c c c c c c|c c c c c|}
+\hline
+\textbf{base 3} & \textbf{G} & \textbf{D/B} & \textbf{L} & \textbf{AVL} & \textbf{Seg. limit 2} & \textbf{P} & \textbf{DPL} & \textbf{S} & \textbf{TYPE} & \textbf{base 2} \\
+0x00 & 0 & 1 & 0 & 0 & 0x0 & 1 & 00 & 1 & 0x2 & 0B \\
+\hline
+& & & & & \textbf{base 1} & & & & & \textbf{Seg. limit 1} \\
+& & & & & 0x8000 & & & & & 0x0F9F  \\
+\hline
+\end{tabular}
+\end{center}
+\begin{lstlisting}[frame=single]
+// 0000000000011 | 000 = 0x18
+(gdt_entry){ 
+		(unsigned short) 0x0F9F, 
+		(unsigned short) 0x8000,
+		(unsigned char) 0x0B, 
+		(unsigned char) 0x2, 
+		(unsigned char) 1, 
+		(unsigned char) 0, 
+		(unsigned char) 1, 
+		(unsigned char) 0x0,
+		(unsigned char) 0, 
+		(unsigned char) 0,  
+		(unsigned char) 1,  
+		(unsigned char) 0, 
+		(unsigned char) 0x00 
+	},
+\end{lstlisting}
+
+\item
+En el CR0 se habilita el bit de modo protegido correspondiente a la posici'on 0.
+\begin{lstlisting}[frame=single]
+	mov		eax, cr0
+	or		eax, 01h
+	mov		cr0, eax
+\end{lstlisting}
+
+\item
+Luego, armada la GDT de manera correcta, estamos aptos para pasar a modo protegido, se utiliza un jmp far para lograr esto, pas'andole como selector 0x80 correspondiente al descriptor de c'odigo. De esta forma se cambia el valor de cs, que ahora tendr'a guardado el selector del descriptor de c'odigo definido en la segmentaci'on.
+\begin{lstlisting}[frame=single]
+	jmp		0x08:modo_protegido
+\end{lstlisting}
+
+\item
+Una vez en modo protegido tenemos que inicializar el resto de los registros de segmentos con los valores correspondientes a la ubicaci'on del descriptor de datos en la gdt, el selector 0x10. El registro ES momentaneamente tendr'a el valor 0x18 perteneciente al descriptor de video para ser utilizado en la rutina de limpieza y remarco, ya que utilizaremos la instrucci'on stosw ( [ES:EDI] = EAX ).
+\begin{lstlisting}[frame=single]
+BITS 32	; ahora trabajando con 32 bits
+modo_protegido:
+	mov	ax, 0x10	; segmento de datos
+	mov	ds, ax
+	mov	fs, ax
+	mov	gs, ax
+	mov	ss, ax
+
+\end{lstlisting}
+
+\item
+Se realiza una rutina que recorre la matriz cada dos bytes colocando en cada word el caracter nulo y el color negro. De la misma manera se recorren los bordes de la matriz colocando un valor deseado.
+\begin{lstlisting}[frame=single]
+	mov	ax, 0x18	; segmento de memoria de video
+	mov	es, ax
+	xor	edi, edi
+	mov	ecx, (80*25)
+	xor eax, eax
+
+limpiar_pantalla:
+	stosw
+	loop limpiar_pantalla
+
+	xor	edi, edi
+	mov	ax, 0xbefe
+	mov	ecx, 80
+
+primer_fila:
+	stosw
+	loop	primer_fila
+
+	mov	ecx, 25-2
+
+medio:
+	mov	[es:edi], ax
+	add	edi, (80-1)*2
+	mov	[es:edi], ax
+	inc	edi
+	inc	edi
+	loop	medio
+
+	mov	ecx, 80
+
+ultima_fila:
+	stosw
+	loop	ultima_fila
+
+	mov	ax, 0x10
+	mov	es, ax		; doy el segmento de datos a es como 
+					; el resto
+
+	;stosw -> escribe lo que esta en ax en [es:edi] y ademas
+	; aumenta edi en 2 bytes
+\end{lstlisting}
+
+\end{enumerate}
+
+
+\section{Ejercicio 2}
+\subsection{Introducci'on} En este ejercicio se realizan los directorios de p'aginas y tablas de p'aginas correspondientes a ambas tareas y al kernel, el cual comparte su mapeo con la tarea del traductor. Ambos directorios de p'aginas tienen s'olo una entrada apuntando a la primera tabla de p'aginas. Despu'es podri'an llegar a tener m'as tablas de p'aginas y a su vez agregar entradas al directorio de p'agina, lo cual no ocurre en nuestro caso, ya que con una entrada al directorio y 'esta apuntando a una sola tabla de paginas alcanza a nuestro cometido.
+\subsection{Pasos de implementaci'on}
+\begin{enumerate}
+\item La definici'on de directorios y tablas de paginas se encuentran en la etiqueta denominada  inicializacion\_directorios\_y\_tablas\_de\_paginas. Estas fueron creadas de forma dinamica con defines.
+\item Una vez inicializadas, en CR3 se guarda la posici'on donde comienza el directorio de paginas perteneciente al kernel (directorio que comparte con el traductor).\\
+\\
+\textbf{Traductor / Kernel} \\
+	CR3 = 0x000B000 \\
+\begin{itemize}
+\item 0x00000000-0x00007FFF	$\rightarrow$ 0x00000000-0x00007FFF \\
+\item 0x00009000-0x00010FFF	$\rightarrow$ 0x00009000-0x00010FFF \\
+\item 0x00013000-0x00013FFF	$\rightarrow$ 0x000b8000-0x000B8FFF \\
+\item 0x00016000-0x00016FFF	$\rightarrow$ 0x00016000-0x00016FFF \\
+\item 0x00018000-0x00018FFF	$\rightarrow$ 0x000b8000-0x000B8FFF \\
+\item 0x000A0000-0x000BFFFF	$\rightarrow$ 0x000a0000-0x000BFFFF \\
+\end{itemize}
+\textbf{Pintor} \\
+	CR3 = 0x000A000 \\
+\begin{itemize}
+\item 0x00000000-0x00008FFF 	$\rightarrow$ 0x00000000-0x00008FFF \\
+\item 0x0000E000-0x0000FFFF	$\rightarrow$ 0x0000e000-0x0000FFFF \\
+\item 0x00013000-0x00013FFF	$\rightarrow$ 0x000b8000-0x000b8FFF \\
+\item 0x00015000-0x00015FFF	$\rightarrow$ 0x00015000-0x00015FFF \\
+\item 0x000B8000-0x000B8FFF	$\rightarrow$ 0x00010000-0x00010FFF \\
+\end{itemize}
+
+\item
+Una vez completados los directorios y tablas de paginas se procede a setear el ultimo bit del registro de control CR0 para habilitar finalmente la paginaci'on.
+
+\item
+Por ultimo se imprime el nombre del grupo en pantalla como lo indica el inciso b.
+
+\end{enumerate}
+
+
+
+\section{Ejercicio 3}
+\subsection{Introducci'on}
+Aqui completaremos la tabla de interrupciones con las 19 interrupciones que indica el manual Intel, y por ultimo usaremos la 32 del timer tick para colgar el mini-scheduler
+\begin{enumerate}
+\item
+Completamos las entradas de la idt en el archivo idt.c con sus entradas correspondientes apuntando a las rutinas de atenci'on, las cuales se encuentran implementadas en el archivo isr.asm.
+
+\item
+En el registro de idtr se carga el descriptor de idt que indica su posici'on y l'imite.
+
+\item
+Se deben llamar a las rutinas para resetear y habilitar el pic proporcionadas por la c'atedra.
+
+\item
+Como 'ultimo paso, con la idt armada se procede a habilitar las interrupciones, la primera en llegar ser'a la correspondiente al timer tick, la cual tiene una rutina que dibuja barras indicando el movimiento de la misma por cada interrupci'on realizada.
+
+\end{enumerate}
+
+
+
+\section{Ejercicio 4}
+\subsection{Introducci'on}
+Se debe completar las tss correspondiente a cada tarea. Cabe destacar que cuando se realize el primer cambio de tarea entre el kernel y el pintor (decisi'on nuestra) se debe tener una tss para guardar el contexto del kernel, en este caso no se volver'a a utilizar la tarea del kernel, pero en cualquier otro caso podr'ia ocurrir.\\ Las tss de las tareas restantes (Traductor y Pintor) tendr'an que ser inicializadas con contextos correctos. \\
+Por 'ultimo se realiza una rutina de intercambio de tarea entre el Traductor y el Pintor ubicada en la rutina de interrupci'on del timer tick ya mencionada.
+\begin{enumerate}
+\item
+Colocamos 3 descriptores de tss en la gdt:
+\begin{enumerate}
+\item
+Contexto actual (kernel) 
+\item
+Contexto del traductor (**)
+\item
+Contexto del pintor (***)
+\end{enumerate}
+Los 3 descriptores tienen sus respectivas direcciones bases que se completan dinamicamente (*) y todos deben tener el bit de SYSTEM en 0, LIMITE en 0x0067 (103) y el TYPE 0x9 para indicar que sons descriptores de tss. \\
+\\
+Se completan dinamicamente en los lugares indicados por (*), (**), (***). \\
+\begin{center} Inicio de contexto \\
+\begin{tabular}[t]{|l|l|l|}
+\hline
+\textbf{} & \textbf{TSS TRADUCTOR} & \textbf{TSS PINTOR} \\
+\hline
+ESP0 & 0x17000 - 0x4 & ESP0 = 0x16000 - 0x4 \\
+SS0 & 0x10 & 0x10 \\
+CR3 & PDTRADU & PDPINTOR \\
+EIP & TASK2INIT (inicio tarea) & TASK1INIT inicio tarea \\
+EFLAGS & 0x202 (interrup. , 1 ) & 0x202 (interrup. , 1 ) \\
+ESP y EBP & ESP0 & ESP0 \\
+ES,SS,DS,FS,GS & 0x10 seg. datos & 0x10 seg. datos \\
+CS & 0x08 seg. codigo & 0x08 seg. codigo \\
+I / O MAP & 0xFFFF & 0xFFFF \\
+\hline
+\end{tabular}
+\end{center}
+\item
+Se mueve al task register el selector 0x20 (descriptor de tss donde ser'a ubicado el contexto actual)
+
+\item
+Se hace un jmp far usando 0x30 (descriptor de tss de la tarea Pintor):
+\indent	la instrucci'on jmp reconoce a 0x30 como descriptor de tss y por ese motivo debe realizar un cambio de contexto
+
+\item
+Se coloca en el timer tick una rutina de cambio de tarea entre la 1 y al 2, esto se hace en el archivo isr.asm bajo la etiqueta \_isr32:
+\indent	se usa la variable isrnumero que usa la rutina next\_clock, a esta variable se la usa haciendole modulo 2
+\begin{enumerate}
+\item
+(isrnumero mod 2) = 0 o 2 $\rightarrow$ tarea pintor
+
+\item
+(isrnumero mod 2) = 1 o 3 $\rightarrow$ tarea traductor
+
+\end{enumerate}
+
+\end{enumerate}
+
+\end{document}
