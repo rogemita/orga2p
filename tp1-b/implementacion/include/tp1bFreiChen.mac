@@ -216,7 +216,8 @@
 	por		%2, xmm7
 
 	sub		eax, 3
-	add		eax, edx	;salto la linea siguiente
+	;add		eax, edx	;salto la linea siguiente
+	;add		eax, edx	;salto la linea siguiente
 %endif
 %endmacro
 
