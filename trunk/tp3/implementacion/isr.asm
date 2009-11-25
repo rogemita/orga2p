@@ -30,7 +30,7 @@ msgisr8_len equ $-msgisr8
 msgisr9: db 'EXCEPCION: Coprocessor Segment Overrun'
 msgisr9_len equ $-msgisr9
 msgisr10: db 'EXCEPCION: TSS Invalida'
-msgisr10-_len equ $-msgisr10
+msgisr10_len equ $-msgisr10
 msgisr11: db 'EXCEPCION: Segmento No Presente'
 msgisr11_len equ $-msgisr11
 msgisr12: db 'EXCEPCION: Stack-Segment Fault '
