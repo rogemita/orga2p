@@ -178,15 +178,15 @@
 	pxor		xmm6, xmm6
 
 ;SATURATION
-	movdqu		xmm7, xmm5
-	pcmpgtd		xmm7, xmm6
-	pand		xmm5, xmm7
+; 	movdqu		xmm7, xmm5
+; 	pcmpgtd		xmm7, xmm6
+; 	pand		xmm5, xmm7
 
 ;ABS
-; 	movdqu		xmm7, xmm5
-; 	psrad		xmm7, 31
-; 	pxor		xmm5, xmm7
-; 	psubd		xmm5, xmm7
+	movdqu		xmm7, xmm5
+	psrad		xmm7, 31
+	pxor		xmm5, xmm7
+	psubd		xmm5, xmm7
 
 	packssdw	xmm5, xmm6
 	packsswb	xmm5, xmm6
