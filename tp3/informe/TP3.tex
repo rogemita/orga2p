@@ -80,14 +80,14 @@ Mita, Rogelio Iv\'an  & 635/07 & rogeliomita@gmail.com \\
 
 \newpage
 \section{Introducci'on}
-Este trabajo tiene como objetivo implementar un peque'no kernel para fijar los conceptos de system programing adquiridos durante la segunda parte de la materia, usando lo visto en las clases te'oricas y en los talleres. A continuaci'on describiremos las etapas basicas por las que pasamos en el kernel.
+Este trabajo tiene como objetivo implementar un peque'no kernel para fijar los conceptos de system programing adquiridos durante la segunda parte de la materia, usando lo visto en las clases te'oricas y en los talleres. A continuaci'on describiremos las etapas b'asicas por las que pasamos en el kernel.
 
 \section{Kernel}
 \subsection{Bootloader} El bootloader fu'e provisto por la c'atedra.
 \subsection{Modo Real}
 Se utiliza un modelo flat de sementaci'on usando un segmento de 4Gb. para c'odigo y otro de 4Gb. para datos. Este modelo carece de seguridad ya que la idea es reducir la complejidad de manipulaci'on de la unidad de segmentaci'on, solapando ambos segmentos y siguiendo un modelo sencillo, como lo es el aplicado. Luego proporcionarle seguridad mediante la unidad de paginaci'on.
 \subsection{Modo Protegido}
-Se aplica paginaci'on sobre el modelo de segmentaci'on y se prepara para que sea capaz de intercambiar entre dos tareas proporcionadas por la c'atedra. Aqui la seguridad se ve reflejada al asignarle a cada tarea su propio sector de memoria, sea tanto para c'odigo, como para datos, y de esta forma cada tarea queda limitada a su contexto. Para realizar dicho intercambio se utilizando como medio, la interrupci'on producida por el timer tick, ya que esta est'a presente constantemente cada un lapso de tiempo 'infimo.
+Se aplica paginaci'on sobre el modelo de segmentaci'on y se prepara para que sea capaz de intercambiar entre dos tareas proporcionadas por la c'atedra. Aqu'i la seguridad se ve reflejada al asignarle a cada tarea su propio sector de memoria, sea tanto para c'odigo, como para datos, y de esta forma cada tarea queda limitada a su contexto. Para realizar dicho intercambio se utiliza como medio, la interrupci'on producida por el timer tick, ya que 'esta est'a presente constantemente cada un lapso de tiempo 'infimo.
 
 \newpage
 
@@ -169,17 +169,17 @@ nombre_grupo_len	equ $ - nombre_grupo
 %define TASK2INIT	0x9000	; inicio tarea traductor
 %define PDPINTOR	0xA000	; page directory de pintor
 %define PDTRADU		0xB000	; page directory de traductor y kernel
-%define PTPINTOR	0xC000	; tabla de paginas de pintor
-%define PTTRADK		0xD000	; tabla de paginas de traductor y kernel
+%define PTPINTOR	0xC000	; tabla de p'aginas de pintor
+%define PTTRADK		0xD000	; tabla de p'aginas de traductor y kernel
 %define STACKTR		0x16000	; pila del traductor
 %define STACKPT		0x15000	; pila del pintor 
-%define KORG		0x1200	; comienzo del codigo de kernel
+%define KORG		0x1200	; comienzo del c'odigo de kernel
 \end{lstlisting}
 
 \newpage
 
 \section{Ejercicio 1}
-\subsection{Introducci'on} En este ejercicio vamos a completar la tabla global de descriptores (GDT) con tre segmentos, uno de datos, uno de c'odigo, y otro s'olo para la matriz de memoria de video (80*25 celdas de 2 bytes). Cabe destacar que en los siguientes ejercicios se agregar'an tres segmentos mas con descriptores de tss que mas tarde detallaremos. Luego se pasa a modo protegido y se realiza una rutina para limpiar la pantalla y armar un recuadro.
+\subsection{Introducci'on} En este ejercicio vamos a completar la tabla global de descriptores (GDT) con tre segmentos, uno de datos, uno de c'odigo, y otro s'olo para la matriz de memoria de video (80*25 celdas de 2 bytes). Cabe destacar que en los siguientes ejercicios se agregar'an tres segmentos mas con descriptores de tss que m'as tarde detallaremos. Luego se pasa a modo protegido y se realiza una rutina para limpiar la pantalla y armar un recuadro.
 \subsection{Pasos de implementaci'on}
 \begin{enumerate}
 \item Lo primero que hace es deshabilitar las interrupciones hasta que se posea una rutina de atenci'on para cada una de ellas.
@@ -188,7 +188,7 @@ inicio:
 	cli
 \end{lstlisting}
 \item 
-Luego se hace el checkeo del pin A20, si es necesario se lo habilita y asi disponer de mas direccionamiento a memoria. \\ La gdt se define en c'odigo c en el archivo gdt.c, sus estructuras se encuentran en gdt.h donde tambi'en se encuentra su descriptor con base y l'imite.
+Luego se hace el checkeo del pin A20, si es necesario se lo habilita y para disponer de m'as direccionamiento a memoria. \\ La gdt se define en c'odigo c en el archivo gdt.c, sus estructuras se encuentran en gdt.h donde tambi'en se encuentra su descriptor con base y l'imite.
 \begin{lstlisting}[frame=single]
 gdt_descriptor GDT_DESC = {sizeof(gdt)-1, (unsigned int)&gdt};
 \end{lstlisting}
@@ -372,10 +372,10 @@ ultima_fila:
 \newpage
 
 \section{Ejercicio 2}
-\subsection{Introducci'on} En este ejercicio se realizan los directorios de p'aginas y tablas de p'aginas correspondientes a ambas tareas y al kernel, el cual comparte su mapeo con la tarea del traductor. Ambos directorios de p'aginas tienen s'olo una entrada apuntando a la primera tabla de p'aginas. Despu'es podri'an llegar a tener m'as tablas de p'aginas y a su vez agregar entradas al directorio de p'agina, lo cual no ocurre en nuestro caso, ya que con una entrada al directorio y 'esta apuntando a una sola tabla de paginas alcanza a nuestro cometido.
+\subsection{Introducci'on} En este ejercicio se realizan los directorios de p'aginas y tablas de p'aginas correspondientes a ambas tareas y al kernel, el cual comparte su mapeo con la tarea del traductor. Ambos directorios de p'aginas tienen s'olo una entrada apuntando a la primera tabla de p'aginas. Despu'es podri'an llegar a tener m'as tablas de p'aginas y a su vez agregar entradas al directorio de p'agina, lo cual no ocurre en nuestro caso, ya que con una entrada al directorio y 'esta apuntando a una sola tabla de p'aginas alcanza a nuestro cometido.
 \subsection{Pasos de implementaci'on}
 \begin{enumerate}
-\item La definici'on de directorios y tablas de paginas se encuentran en la etiqueta denominada  inicializacion\_directorios\_y\_tablas\_de\_paginas. Estas fueron creadas de forma dinamica.
+\item La definici'on de directorios y tablas de p'aginas se encuentran en la etiqueta denominada  inicializacion\_directorios\_y\_tablas\_de\_paginas. 'Estas fueron creadas de forma din'amica.
 \begin{lstlisting}[frame=single]
 inicializacion_directorios_y_tablas_de_paginas:
 
@@ -467,7 +467,7 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 %endrep
 \end{lstlisting}
 
-\item Una vez inicializadas, en CR3 se guarda la posici'on donde comienza el directorio de paginas perteneciente al kernel (directorio que comparte con el traductor).\\
+\item Una vez inicializadas, en CR3 se guarda la posici'on donde comienza el directorio de p'aginas perteneciente al kernel (directorio que comparte con el traductor).\\
 \\
 \textbf{Traductor / Kernel} \\
 	CR3 = 0x000B000 \\
@@ -495,7 +495,7 @@ TIMES PDPINTOR - KORG - ($ - $$) db 0x00
 \end{lstlisting}
 
 \item
-Una vez completados los directorios y tablas de paginas se procede a setear el ultimo bit del registro de control CR0 para habilitar finalmente la paginaci'on.
+Una vez completados los directorios y tablas de p'aginas se procede a setear el ultimo bit del registro de control CR0 para habilitar finalmente la paginaci'on.
 \begin{lstlisting}[frame=single]
 	mov eax, cr0				
 	or  eax, 0x80000000		;habilito paginacion
@@ -503,7 +503,7 @@ Una vez completados los directorios y tablas de paginas se procede a setear el u
 \end{lstlisting}
 
 \item
-Por ultimo se imprime el nombre del grupo en pantalla como lo indica el inciso b.
+Por 'ultimo se imprime el nombre del grupo en pantalla como lo indica el inciso b.
 \begin{lstlisting}[frame=single]
 IMPRIMIR_TEXTO nombre_grupo, nombre_grupo_len, 0xbe, 1, 10, 0x13000
 ; direccion 0x13000 mapeada a memoria de video
@@ -515,12 +515,12 @@ IMPRIMIR_TEXTO nombre_grupo, nombre_grupo_len, 0xbe, 1, 10, 0x13000
 
 \section{Ejercicio 3}
 \subsection{Introducci'on}
-Aqui completaremos la tabla de interrupciones con las 19 interrupciones que indica el manual Intel, y por ultimo usaremos la 32 del timer tick para colgar el mini-scheduler
+Aqu'i completaremos la tabla de interrupciones con las 19 interrupciones que indica el manual Intel, y por 'ultimo usaremos la 32 del timer tick para colgar el mini-scheduler
 \subsection{Pasos de implementaci'on}
 \begin{enumerate}
 \item
-Completamos las entradas de la idt en el archivo idt.c con sus entradas correspondientes apuntando a las rutinas de atenci'on, esto se hace usando la funcion idtFill que se encarga de completar las entradas de la tabla idt. Las rutinas se encuentran implementadas en el archivo isr.asm. \\
-Presentaremos la forma general de las entradas de la tabla idt con NRO representando al numero de interrupcion. Completaremos las interrupciones como se indican en el manual de Intel, comenzando por la 0 y llegando hasta la 19, y luego completaremos la 32 correspondiente al timer tick. (la interrupcion numero 33 correspondiente al teclado no esta realizada por cuestiones de tiempo y no era requisito del enunciado).\\
+Completamos las entradas de la idt en el archivo idt.c con sus entradas correspondientes apuntando a las rutinas de atenci'on, esto se hace usando la funci'on idtFill que se encarga de completar las entradas de la tabla idt. Las rutinas se encuentran implementadas en el archivo isr.asm. \\
+Presentaremos la forma general de las entradas de la tabla idt con NRO representando al n'umero de interrupci'on. Completaremos las interrupciones como se indican en el manual de Intel, comenzando por la 0 y llegando hasta la 19, y luego completaremos la 32 correspondiente al timer tick. (la interrupci'on n'umero 33 correspondiente al teclado no esta realizada por cuestiones de tiempo y no era requisito del enunciado).\\
 \begin{lstlisting}[frame=single]
 ARCHIVO IDT.C:
 
@@ -610,7 +610,7 @@ Como 'ultimo paso, con la idt armada se procede a habilitar las interrupciones, 
 
 \section{Ejercicio 4}
 \subsection{Introducci'on}
-Se debe completar las tss correspondiente a cada tarea. Cabe destacar que cuando se realize el primer cambio de tarea entre el kernel y el pintor (decisi'on nuestra) se debe tener una tss para guardar el contexto del kernel, en este caso no se volver'a a utilizar la tarea del kernel, pero en cualquier otro caso podr'ia ocurrir.\\ Las tss de las tareas restantes (Traductor y Pintor) tendr'an que ser inicializadas con contextos correctos. \\
+Se debe completar las tss correspondiente a cada tarea. Cabe destacar que cuando se realice el primer cambio de tarea entre el kernel y el pintor (decisi'on nuestra) se debe tener una tss para guardar el contexto del kernel, en este caso no se volver'a a utilizar la tarea del kernel, pero en cualquier otro caso podr'ia ocurrir.\\ Las tss de las tareas restantes (Traductor y Pintor) tendr'an que ser inicializadas con contextos correctos. \\
 Por 'ultimo se realiza una rutina de intercambio de tarea entre el Traductor y el Pintor ubicada en la rutina de interrupci'on del timer tick ya mencionada.
 \subsection{Pasos de implementaci'on}
 \begin{enumerate}
@@ -681,9 +681,9 @@ Contexto del pintor (***)
 	}
 \end{lstlisting}
 \end{enumerate}
-Los 3 descriptores tienen sus respectivas direcciones bases que se completan dinamicamente (*) y todos deben tener el bit de SYSTEM en 0, LIMITE en 0x0067 (103) y el TYPE 0x9 para indicar que son descriptores de tss. \\
+Los 3 descriptores tienen sus respectivas direcciones bases que se completan din'amicamente (*) y todos deben tener el bit de SYSTEM en 0, LIMITE en 0x0067 (103) y el TYPE 0x9 para indicar que son descriptores de tss. \\
 \\
-Se completan dinamicamente en los lugares indicados por (*), (**), (***). \\
+Se completan din'amicamente en los lugares indicados por (*), (**), (***). \\
 \begin{center} Inicio de contexto \\
 \begin{tabular}[t]{|l|l|l|}
 \hline
@@ -717,7 +717,7 @@ I / O MAP & 0xFFFF & 0xFFFF \\
 	add	edi, 104	; nos paramos en la segunda entry
 				; de la tabla de tss's
 
-	; (**) cargo en el descriptro de la gdt correspondiente a la
+	; (**) cargo en el descriptor de la gdt correspondiente a la
 	; tarea traductor, la base de la tss de la misma
 	mov	esi, gdt
 	add	esi, (8*5 + 2)
@@ -727,7 +727,7 @@ I / O MAP & 0xFFFF & 0xFFFF \\
 	mov	[esi + 4], al
 	mov	[esi + 7], ah
 
-	; (**) cargamos la informacion de la tarea
+	; (**) cargamos la informaci'on de la tarea
 	; traductor antes de saltar
 	add	edi, 4
 	mov dword [edi], 0x17000 - 0x4
@@ -740,7 +740,7 @@ I / O MAP & 0xFFFF & 0xFFFF \\
 	add	edi, (4)
 	mov dword [edi], 0x00000202
 	add	edi, (5*4)	; salteo eax, ecx, edx, ebx
-	mov	eax, 0x17000 - 0x4 ;direccion virtual de la
+	mov	eax, 0x17000 - 0x4 ;direcci'on virtual de la
 		; pila del traductor pero que crece desde abajo
 	stosd	; esp
 	stosd	; ebp
@@ -758,9 +758,9 @@ I / O MAP & 0xFFFF & 0xFFFF \\
 	
 	mov	edi, tsss
 	add	edi, (104*2)	; estamos parados en la tercera
-		; posicion de la tss, para cargar la tss pintor
+		; posici'on de la tss, para cargar la tss pintor
 
-	; (***) cargo en el descriptro de la gdt correspondiente
+	; (***) cargo en el descriptor de la gdt correspondiente
 	; a la tarea pintor, la base de la tss de la misma
 	mov	esi, gdt
 	add	esi, (8*6 + 2)
@@ -770,7 +770,7 @@ I / O MAP & 0xFFFF & 0xFFFF \\
 	mov	[esi + 4], al
 	mov	[esi + 7], ah
 
-	; (***) cargamos la informacion de la tarea pintor
+	; (***) cargamos la informaci'on de la tarea pintor
 	add	edi, 4
 	mov dword [edi], (0x16000 - 0x4)
 	add	edi, 4
@@ -782,7 +782,7 @@ I / O MAP & 0xFFFF & 0xFFFF \\
 	add	edi, (4)
 	mov dword [edi], 0x00000202
 	add	edi, (5*4)
-	mov	eax, 0x16000 - 0x4 ;direccion virtual de la
+	mov	eax, 0x16000 - 0x4 ;direcci'on virtual de la
 		; pila del pintor pero que crece desde abajo
 	stosd	; esp
 	stosd	; ebp
@@ -817,7 +817,7 @@ Se hace un jmp far usando 0x30 (descriptor de tss de la tarea Pintor):
 
 \item
 Se coloca en el timer tick una rutina de cambio de tarea entre la 1 y al 2, esto se hace en el archivo isr.asm bajo la etiqueta \_isr32:
-\indent	se usa la variable isrnumero que usa la rutina next\_clock, a esta variable se la usa haciendole modulo 2
+\indent	se usa la variable isrnumero que usa la rutina next\_clock, a esta variable se la usa haci'endole m'odulo 2
 \begin{enumerate}
 \item
 (isrnumero mod 2) = 0 o 2 $\rightarrow$ tarea pintor
