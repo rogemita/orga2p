@@ -8,7 +8,7 @@ extern pic1_intr_end
 ; TODO: Definir el resto de las ISR
 ; ----------------------------------------------------------------
 
-global _isr0, _isr5, _isr6, _isr7, _isr9, _isr10, _isr11, _isr12, _isr13, _isr14, _isr16, _isr17, _isr19, _isr32
+global _isr0, _isr1, _isr2, _isr3, _isr4, _isr5, _isr6, _isr7, _isr8, _isr9, _isr10, _isr11, _isr12, _isr13, _isr14, _isr16, _isr17, _isr18, _isr19, _isr32, _isr33
 msgisr0: db 'Divide Error (Fault)'
 msgisr0_len equ $-msgisr0
 msgisr1: db 'RESERVED'
@@ -47,10 +47,32 @@ msgisr18: db 'Machine Check (Abort)'
 msgisr18_len equ $-msgisr18
 msgisr19: db 'SIMD Floating-Point Exception'
 msgisr19_len equ $-msgisr19
+msgisr33: db 'TECLADO'
+msgisr33_len equ $-msgisr33
 
 _isr0:
 	mov edx, msgisr0
 	IMPRIMIR_TEXTO edx, msgisr0_len, 0x0C, 0, 0, 0x13000
+	jmp $
+
+_isr1:
+	mov edx, msgisr1
+	IMPRIMIR_TEXTO edx, msgisr1_len, 0x0C, 0, 0, 0x13000
+	jmp $
+
+_isr2:
+	mov edx, msgisr2
+	IMPRIMIR_TEXTO edx, msgisr2_len, 0x0C, 0, 0, 0x13000
+	jmp $
+
+_isr3:
+	mov edx, msgisr3
+	IMPRIMIR_TEXTO edx, msgisr3_len, 0x0C, 0, 0, 0x13000
+	jmp $
+
+_isr4:
+	mov edx, msgisr4
+	IMPRIMIR_TEXTO edx, msgisr4_len, 0x0C, 0, 0, 0x13000
 	jmp $
 
 _isr5:
@@ -66,6 +88,11 @@ _isr6:
 _isr7:
 	mov edx, msgisr7
 	IMPRIMIR_TEXTO edx, msgisr7_len, 0x0C, 0, 0, 0x13000
+	jmp $
+
+_isr8:
+	mov edx, msgisr0
+	IMPRIMIR_TEXTO edx, msgisr0_len, 0x0C, 0, 0, 0x13000
 	jmp $
 
 _isr9:
@@ -108,6 +135,11 @@ _isr17:
 	IMPRIMIR_TEXTO edx, msgisr17_len, 0x0C, 0, 0, 0x13000
 	jmp $
 
+_isr18:
+	mov edx, msgisr18
+	IMPRIMIR_TEXTO edx, msgisr18_len, 0x0C, 0, 0, 0x13000
+	jmp $
+
 _isr19:
 	mov edx, msgisr19
 	IMPRIMIR_TEXTO edx, msgisr19_len, 0x0C, 0, 0, 0x13000
@@ -135,6 +167,10 @@ termino:
 	sti
 	iret
 
+_isr33:
+	mov edx, msgisr33
+	IMPRIMIR_TEXTO edx, msgisr33_len, 0x0C, 0, 0, 0x13000
+	jmp $
 
 ; Funcion para dibujar el reloj.
 ; void next_clock(void)
