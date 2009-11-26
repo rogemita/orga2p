@@ -1,0 +1,962 @@
+\documentclass[11pt]{article}
+\usepackage [spanish,active acute] {babel}
+\usepackage{a4wide}
+\usepackage{listings}
+\lstset{language={[x86masm]Assembler}, basicstyle=\small, numbers=left, numberstyle=\tiny}
+%\usepackage[latin1]{inputenc}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmic}[1]
+
+\frenchspacing
+\title{
+\begin{centering}
+Universidad de Buenos Aires \\
+Facultad de Ciencias Exactas y Naturales \\
+Departamento de Ciencias de la Computaci\'on \\
+\vskip 25pt
+\bf Organizaci\'on del computador II \\
+\bf Segundo cuatrimestre 2009 
+\end{centering}
+}
+\author{
+Grupo: \textsc{POPA} \\
+\begin{tabular}[t]{|l|l|l|}
+\hline
+\textbf{Apellido y nombre} & \textbf{L.U.} & \textbf{mail} \\
+\hline 
+\hline
+Cerrutti, Mariano Javier  & 525/07 & vscorza@gmail.com \\
+\hline
+Huel, Federico Ariel  & 329/07 & federico.huel@gmail.com \\
+\hline
+Mita, Rogelio Iv\'an  & 635/07 & rogeliomita@gmail.com \\
+\hline
+\end{tabular}
+}
+\date{5 de Octubre de 2009} 
+
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+
+\newpage
+\section{Archivos adjuntos}
+\textsc{Implementaci'on} 
+\begin{itemize}
+\item src:
+\subitem \textit{bordes.c}
+\subitem \textit{sobel.asm}
+\subitem \textit{prewitt.asm}
+\subitem \textit{roberts.asm}
+\subitem \textit{freiChen.asm}
+\item img:
+\subitem \textit{lena.bmp}
+\end{itemize}
+
+\textsc{Includes}
+\begin{itemize}
+\item \textit{offset.inc} 
+\item \textit{macros.mac} 
+\item \textit{tp1bSobelPrewitt.mac} 
+\item \textit{tp1bRoberts.mac} 
+\item \textit{tp1bFreiChen.mac} 
+\end{itemize}
+
+\textsc{Enunciado} 
+\begin{itemize}
+\item \textit{EnunciadoTP1b.pdf}  
+\end{itemize}
+
+\textsc{Informe} 
+\begin{itemize}
+\item \textit{TP1-b.pdf}
+\end{itemize}
+
+\section{Instrucciones de uso}
+Decidimos escribir los c'odigos de las funciones de forma separada para mayor claridad. Utilizamos tambi'en un archivo (\textit{macros.mac}) para definir nuestras macros y  (\textit{offset.inc}) para darle nombres declarativos a los datos de la estructura imagen de \verb-openCV-. En el cd adjunto al trabajo pr'actico, se encuentran todos los archivos fuente clasificados seg'un el tipo. Decidimos utilizar un \verb'makefile' para compilar todos los archivos a la vez. 
+
+\newpage
+\section{Introducci'on}
+El motivo de este trabajo es ecribir un algoritmo de detecci'on de bordes en lenguaje ensamblador.  Para esto utilizaremos el concepto de derivadas parciales en un espacio de dimensi'on dos dado por el arreglo de p'ixeles que conforman una imagen, de esta manera podemos interesarnos en la derivada parcial respecto de x: $dx$ o la derivada parcial respecto de y: $dy$.\\
+En la pr'actica el concepto de derivada parcial se aproxima aplicando operadores especiales (\emph{Roberts},\emph{Prewitt} o \emph{Sobel}) que aplican una matriz de convoluci'on a cada pixel de la imagen.\\
+Nuestra motivaci'on a la hora de escribir el c'odigo en lenguaje ensamblador viene dada por la necesidad de conseguir una soluci'on eficiente en t'erminos de tiempo para resolver el problema de detectar bordes en una imagen de tama\~{n}o arbitrario. \\
+\begin{center}
+\begin{minipage}{11cm}
+ Las funciones en c'odigo ensamblador estan divididas seg'un el operador que se desea aplicar a la imagen para buscar bordes.
+\end{minipage}
+\end{center}
+En particular, para este trabajo se ha hecho uso de la tecnolog'ia \verb'SSE' de \verb'Intel', cuyo diseño es motivado por la necesidad de procesar varios datos en paralelo para operar sobre arreglos de bytes que pueden representar informaci'on de imagen (nuestro caso), sonido o video, o cualquier otro uso que pueda darse al procesamiento paralelo de se\~{n}ales o datos.\\
+Los registros tienen un tama\~{n}o de 128 bits, permitiendo en nuestro caso llegar a cargar hasta ocho pixeles en un mismo registro.  La justificaci'on del uso de registros de mayor tama\~{n}o viene dada por la reducci'on en la cantidad de accesos a memoria realizados para procesar una misma cantidad de pixeles.
+
+
+\section{Desarrollo}
+Antes de presentar los algoritmos pertinentes a cada funci'on hacemos algunas anotaciones generales:
+\begin{itemize}
+\item Nos fue pedido que en todos los algoritmos sea respetada la convenci'on \verb'C', de forma que la construcci'on del \verb'stack frame' (guardado de los registros edi, esi y ebx, ajuste de la pila, etc) se encuentra al principio de cada funci'on dentro del macro \verb'doEnter' junto con su contrapartida que se encuentra definida en el macro \verb'doLeave'.
+\item En todas las funciones, consideramos que los par'ametros pasados por referencia (excepto aquellos que deb'ian cambiarse expl'icitamente de acuerdo al enunciado) no deb'ian ser modificados, y por lo tanto, los mismos han sido guardados en variables locales o bien en registros. En algunos casos esto es muy importante, por ejemplo, cuando nos pasan un puntero a una lista, si se modifica ese puntero, se pierde la direcci'on de esa lista luego de llamar a la funci'on; y esto no puede ocurrir.
+\item Tambi'en tuvimos en cuenta que en las im'agenes las filas de p'ixeles se guardan en memoria de forma alineada.
+\item Por cuestiones de simplicidad decidimos que los algoritmos tambi'en procesar'an la basura (restos de bytes en memoria) que era inclu'ida al alinear la imagen, ya que al momento de la visualizaci'on ser'an considerados aquellos p'ixeles contenidos dentro del ancho y el alto definido para la imagen.
+\item Se han optimizado los algoritmos para permitir procesar la mayor cantidad de pixeles por carga de memoria, esto nos ha llevado a mantener buenas pr'acticas de dise\~{n}o para nuestros algoritmos.
+\end{itemize}
+A continuaci'on se exponen las funciones implementadas, junto con sus respectivos c'odigos en lenguaje ensamblador y se explica el uso que se da a los registros de prop'osito general y el funcionamiento de las mismas en l'ineas generales.
+\subsection{Enfoque general}
+Para el c'alculo aproximado de las derivadas parciales aplicamos matrices de convoluci'on, que nos permiten aplicar un valor a un pixel de destino a partir de operar suma de productos a sus p'ixeles circundantes en la imagen de origen, en el ejemplo de la derivada parcial x para el operador de \verb'Sobel' la matriz tendr'ia este aspecto:
+\begin{center}
+\begin{minipage}{5in}
+\[ \left( \begin{array}{ccc}
+-1 & 0 & 1 \\
+-2 & 0 & 2 \\
+-1 & 0 & 1 \end{array} \right)\]
+\end{minipage}
+\end{center}
+
+Podemos explicar su aplicaci'on con el siguiente pseudoc'odigo:
+
+ \begin{algorithmic}[1]
+\STATE $(\forall p_{i,j} : i \in ancho(imagenOrigen), j \in alto(imagenOrigen))(p_{i,j} \in [0-255])$
+\FOR{$i \in ancho(imagenOrigen)$}
+\FOR{$j \in alto(imagenOrigen)$}
+\STATE $p_{i,j} \leftarrow -p_{i-1,j-1} - 2 * p_{i-1,j} - p_{i-1,j+1} +p_{i+1,j-1} + 2 * p_{i+1,j} + p_{i+1,j+1}$\label{lin:linea_asignapixel}
+\ENDFOR
+\ENDFOR
+ \end{algorithmic}
+
+Esta es la manera en la que aplicaremos matrices de convoluci'on a nuestras im'agenes para conseguir nuevas im'agenes que contienen la informaci'on de las derivadas parciales para intentar detectar bordes, i.e. cambios bruscos en la intensidad de la imagen respecto de la direcci'on de abscisas y ordenadas o en ambas.
+
+\subsection{Archivos inclu'idos}
+\subsubsection{offset.inc}
+Aqu'i se encuentran los desplazamientos a dato para cada una de las estructuras que usamos para la imagen del \verb-openCV- por motivos de claridad en el c'odigo
+\begin{lstlisting}[frame=single]
+; typedef struct _IplImage
+; {
+;     int nSize;
+;     int ID;
+;     int nChannels;
+;     int alphaChannel;
+;     int depth;
+;     char colorModel[4];
+;     char channelSeq[4];
+;     int dataOrder;
+;     int origin;
+;     int align;
+;     int width;
+;     int height;
+;     struct _IplROI *roi;
+;     struct _IplImage *maskROI;
+;     void *imageId;
+;     struct _IplTileInfo *tileInfo;
+;     int imageSize;
+;     char *imageData;
+;     int widthStep;
+;     int BorderMode[4];
+;     int BorderConst[4];
+;     char *imageDataOrigin;
+; }
+; IplImage;
+
+%define DEPTH		16
+%define WIDTH		40
+%define HEIGHT		44
+%define IMAGE_DATA 	68
+%define WIDTH_STEP	72
+\end{lstlisting}
+
+\subsubsection{macros.mac}
+Estos son las macros utilizadas en cada funci'on.  Para este trabajo s'olo utilizamos \verb'doEnter' y \verb'doLeave' pero se han mantenido las macros restantes por suponer su utilidad futura.
+\begin{lstlisting}[frame=single]
+;========================
+; MACRO doEnter
+;========================
+; Escribe el encabezado que arma el stack frame
+; Entrada:
+;	tamanio		tamanio de memoria a reservar al entrar al proc
+;========================
+%macro doEnter 0-1 0
+	push ebp
+	mov ebp, esp
+%if %1 <> 0
+	sub esp, %1
+%endif
+	push edi
+	push esi
+	push ebx
+%endmacro
+;========================
+; MACRO doLeave
+;========================
+; Escribe la salida que restaura el stack frame previo
+; Entrada:
+;	tamanio		tamanio de memoria reservada al entrar al proc
+;	doRet		se marca en 1 si debe llamar a ret
+;========================
+%macro doLeave 0-2 0,0
+	pop ebx
+	pop esi
+	pop edi
+%if %1 <> 0
+	add esp, %1
+%endif
+	pop ebp
+%if %2 <> 0
+	ret
+%endif	
+%endmacro
+
+;========================
+; MACRO doWrite
+;========================
+; Escribe una cadena a consola
+; Entrada: 
+;	mensaje		direccion de comienzo de la cadena
+;	len		largo de la cadena a escribir
+;========================
+%macro doWrite 1
+	%%msg: db %1
+	%%len: equ $- %%msg	
+	mov eax,4			;inicializa escritura a consola
+	mov ebx,1
+	mov ecx,%%msg
+	mov edx,%%len
+	int 80h
+%endmacro
+;========================
+; MACRO doEnd
+;========================
+; Termina la ejecucion con el codigo deseado
+; Entrada: 
+;	codigo		codigo de error deseado, cero en su defecto
+;========================
+%macro doEnd 0-1 0
+	mov eax,1
+	mov ebx,%1
+	int 80h
+%endmacro
+;========================
+; MACRO doMalloc
+;========================
+; Pide la cantidad especificada de memoria
+; Entrada:
+;	cantidad	cantidad de memoria a reserver
+;========================
+%macro doMalloc 1
+	push %1
+	call malloc
+	add esp, 4
+%endmacro
+;========================
+; MACRO doRetc
+;========================
+; Retorna si se cumple la condicion especificada
+; Entrada:
+;	condicion	condicion ante la cual retornar
+;========================
+%macro  doRetc 1 
+        j%-1    %%skip 
+        ret 
+  %%skip: 
+%endmacro
+;========================
+; MACRO doWriteFile
+;========================
+; Escribe a archivo solo si esta definido el DEBUG
+; Entrada:
+;	arch		puntero al archivo
+;	msg		texto a escribir
+; Uso:
+;	doWriteFile [FHND], {"hola mundo",13,10}
+;========================
+%macro  doWriteFile 2+ 
+%ifdef DEBUG
+        jmp     %%endstr 
+  %%str:        db      %2 
+  %%endstr: 
+        mov     dx,%%str 
+        mov     cx,%%endstr-%%str 
+        mov     bx,%1 
+        mov     ah,0x40 
+        int     0x21 
+%endif
+%endmacro
+\end{lstlisting}
+
+\newpage
+\subsection{Recorrido de la matriz de imagen}
+\begin{enumerate}
+\item \textbf{Cosas que tuvimos en cuenta} 
+\subitem La matriz fue recorrida procesando la basura, i.e, en todo el ancho de la imagen alineada \\
+\subitem Cada pixel ocupa exactamente un byte, ya que la imagen que recibe la funci'on es en escala de grises (0-255)  \\
+\subitem En la arquitectura \verb'IA-32' los datos son guardados en memoria de forma \emph{little-endian}, por lo que el byte m'as significativo de un dato se encuentra en la posici'on de memoria m'as alta.
+\end{enumerate}
+
+\subsection{Funciones implementadas}
+\begin{itemize}
+\item Intentamos reducir el acceso a memoria utilizando registros para aquellas operaciones que se encontraban dentro de los ciclos, evitando as'i m'ultiples accesos a memoria. Si bien esto llev'o a tener un codigo menos legible, lo explicaremos en detalle.
+\item Variables locales
+\subitem \textit{SRC} Contiene el puntero a la imagen de entrada.
+\subitem \textit{DST} Contiene el puntero a la imagen resultado.
+\subitem \textit{WIDTH} Contiene el tamano de ancho de la imagen.
+\subitem \textit{HEIGHT} Contiene la altura de la imagen.
+\subitem \textit{XORDER} Variable que especifica si el c'alculo debe hacerse sobre la derivada X.
+\subitem \textit{YORDER} Variable que especifica si el c'alculo debe hacerse sobre la derivada Y.
+\subitem \textit{REMAINDER} Variable que se usa para mantener el resto del ancho de la imagen m'odulo el ancho del registro 
+\subitem \textit{eax} Se utiliza como acumulador, para realizar los c'alculos de los p'ixeles.
+\subitem \textit{ebx} Se utiliza como acumulador, para realizar los c'alculos de los p'ixeles y para mantener el dato del alto de la imagen.
+\subitem \textit{esi} Se utiliza para recorrer la imagen de salida.
+\subitem \textit{edi} Se utiliza para recorrer la imagen de entrada.
+\item \textbf{Funcionamiento}
+\subitem Lo que intentamos hacer en todos los algoritmos es optimizar la cantidad de c'alculos por cada carga que hacemos de la memoria principal a los registro de procesamiento de se\~{n}ales.
+\end{itemize}
+
+\subsubsection{Sobel y Prewitt}
+Presentaremos la el c'odigo de la funci'on completa de \verb'Sobel' y \verb'Prewitt'.
+\begin{enumerate}
+\item \textbf{Orden X}
+\subitem Para aplicar el operador en el orden X se cargan seis registros \verb'xmm' con 16 bytes de la imagen en cada uno, correspondientes a seis filas consecutivas, esto es, a seis tiras de 16 pixeles de la imagen. Luego utlizamos dos funciones auxiliares que desempaquetan la parte alta o baja del registro, convirtiendo los datos de byte a word, permitiendo operar sobre ellos sin perder precisi'on por desbordamiento.  Luego son empaqutados y saturados como corresponde.  De los $16 \times 6$ pixeles que se cargan en los registros de procesamiento de se\~{n}ales se consigue procesar $14 \times 4$ pixeles de la imagen final.  Los 'ultimos registros \verb'xmm6' y \verb'xmm7' son utilizados como registros temporales y de acumulaci'on.  Ya que sobre estos se desempaquetan los datos cargados en los anteriores y sobre uno de ellos se acumula el resultado de aplicar la matriz de convoluci'on.  Se avanza sobre una base de 14 pixeles horizontalmente, por lo expuesto anteriormente, y al completar una fila, para aprovechar que se han procesado varias filas a la vez, el 'indice salta cuatro filas.  Para compensar los pixeles que pueden haber quedado sin procesar, se calcula, al entrar a la funci'on se calcula el resto del ancho de imagen m'odulo el ancho de los registros.
+
+\begin{lstlisting}[frame=single]
+;========================
+; MACRO obtenerBajo
+;========================
+; Recupera la parte alta de un dato empaquetado a byte
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	registro3
+;	offset		indica si debe desplazar el dato original
+;========================
+%macro obtenerBajo 2-3 0
+	movdqu		%1, %2		;copio el dato
+%if %3 != 0
+	psrldq		%1, %3		;desplazo dos columnas
+%endif
+	punpcklbw	%1, %1		;desempaqueto la parte baja
+	psllw		%1, 8		;retiro el excedente alto
+	psrlw		%1, 8
+%endmacro
+
+%macro obtenerAlto 2-3 0
+	movdqu		%1, %2		;copio el dato
+%if %3 != 0
+	psrldq		%1, %3		;desplazo dos columnas
+%endif
+	punpckhbw	%1, %1		;desempaqueto la parte baja
+	psllw		%1, 8		;retiro el excedente alto
+	psrlw		%1, 8
+%endmacro      
+
+;========================
+; MACRO sobelPrewittX
+;========================
+; Cuerpo de codigo que aplica los operadores de Sobel 
+; y Prewitt en el orden x
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	registro3
+;	duplica?	debe duplicar el valor del primer registro?
+;	procesaAmbos	indica si debe procesar el dato bajo y el alto
+;========================
+%macro	sobelPrewittX 4-5 0
+	;**************************
+	; VOY A APLICAR EL OPERADOR
+	; EN LA PARTE BAJA
+	;**************************
+	obtenerBajo	xmm6, %2, 2	;obtengo los bajos 
+					;de la segunda fila
+%if %4 = 0
+	psllw		xmm6, 1		;multiplico por dos
+%endif
+	obtenerBajo	xmm7, %1, 2	;obtengo los bajos 
+					;de la primera fila
+	paddusw		xmm6, xmm7	;sumo saturado
+	obtenerBajo	xmm7, %3, 2	;obtengo los bajos 
+					;de la tercera fila
+	paddusw		xmm6, xmm7	;sumo saturado
+
+	obtenerBajo	xmm7, %2	;obtengo los bajos 
+					;de la segunda fila
+%if %4 = 0
+	psllw		xmm7, 1		;multiplico por dos
+%endif
+	psubusw		xmm6, xmm7
+	obtenerBajo	xmm7, %1	;obtengo los bajos 
+					;de la primera fila
+	psubusw		xmm6, xmm7	;sumo saturado
+	obtenerBajo	xmm7, %3	;obtengo los bajos 
+					;de la tercera fila
+	psubusw		xmm6, xmm7	;sumo saturado
+
+	;************************
+	; TERMINE COPIO A DESTINO
+	;************************
+	packuswb	xmm6, xmm6
+
+	movq		[eax], xmm6	;copio los 8 bytes 
+					;al destino	
+
+%if %5 = 0
+	add		eax, 8		;salto la linea siguiente
+	;**************************
+	; VOY A APLICAR EL OPERADOR
+	; EN LA PARTE ALTA
+	;**************************	
+	obtenerAlto	xmm6, %2, 2	;obtengo los bajos 
+					;de la segunda fila
+%if %4 = 0
+	psllw		xmm6, 1		;multiplico por dos
+%endif
+	obtenerAlto	xmm7, %1, 2	;obtengo los bajos 
+					;de la primera fila
+	paddusw		xmm6, xmm7	;sumo saturado
+	obtenerAlto	xmm7, %3, 2	;obtengo los bajos 
+					;de la tercera fila
+	paddusw		xmm6, xmm7	;sumo saturado
+
+	obtenerAlto	xmm7, %2	;obtengo los bajos 
+					;de la segunda fila
+%if %4 = 0
+	psllw		xmm7, 1		;multiplico por dos
+%endif
+	psubusw		xmm6, xmm7
+	obtenerAlto	xmm7, %1	;obtengo los bajos 
+					;de la primera fila
+	psubusw		xmm6, xmm7	;sumo saturado
+	obtenerAlto	xmm7, %3	;obtengo los bajos 
+					;de la tercera fila
+	psubusw		xmm6, xmm7	;sumo saturado
+
+	;************************
+	; TERMINE COPIO A DESTINO
+	;************************
+	packuswb	xmm6, xmm6
+	movq		[eax], xmm6	;copio los 4 bytes al destino 
+					;de los cuales 2 son validos
+	sub		eax, 8
+%endif
+	add		eax, edx	;salto la linea siguiente
+%endmacro
+\end{lstlisting}
+
+
+\item \textbf{Orden Y}
+\subitem En el caso del orden Y, para aprovechar la carga de los pixeles en los registros \verb'xmm', y sin hacer uso de las operaciones propias de \verb'sse3' generamos una m'ascara en uno de los registros que se mantiene en memoria y se utiliza para filtrar los pixeles intercalados de a byte, para poder realizar esta secuencia de operaciones: $filtrar\rightarrow desplazar\rightarrow sumar/restar$.\\
+Lo que vamos a hacer es operar sobre los pixeles de forma intercalada, primero sobre los pares, filtramos, acomodamos, operamos, y luego saturamos.  Esto nos dejar'a procesados los pixeles pares primero, luego los impares, y es por esto que debemos aplicar una operaci'o \verb'por' en lugar de, por ej. \verb'movdqu' para conservar los pixeles ya calculados.
+
+\begin{lstlisting}[frame=single]
+;========================
+; MACRO sobelPrewittY
+;========================
+; Cuerpo de codigo que aplica los operadores de Sobel 
+; y Prewitt en el orden y
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	duplica?	debe duplicar el valor del primer registro?
+;	procesaAmbos	indica si debe procesar el dato bajo y el alto
+;========================
+%macro	sobelPrewittY 2-3 0
+	;**********************
+	; PROCESO PIXEL 2,4,6,8
+	;**********************
+	movdqu	xmm5, %1	;cargo el primer registro 
+				;y enmascaro para pasar a word
+	pand	xmm5, xmm7
+	movdqu	xmm6, %1	;cargo y me quedo con el pixel 
+				;una a derecha
+	pslldq	xmm6, 1
+	pand	xmm6, xmm7
+%if %3 = 0
+	psllw	xmm6, 1		;multiplico por dos
+%endif
+	paddusw	xmm5, xmm6	;sumo el segundo pixel
+	movdqu	xmm6, %1
+	pslldq	xmm6, 2		;cargo y me quedo con el 
+				;pixel dos a derecha
+	pand	xmm6, xmm7
+	paddusw	xmm5, xmm6	; ya tengo acumulado en xmm5 la 
+				;parte positiva de los pixeles
+				;2, 4, 6, 8
+
+	movdqu	xmm6, %2
+	pand	xmm6, xmm7
+	psubusw	xmm5, xmm6
+	movdqu	xmm6, %2
+	pslldq	xmm6, 1
+	pand	xmm6, xmm7
+%if %3 = 0
+	psllw	xmm6, 1		;multiplico por dos
+%endif	
+	psubusw	xmm5, xmm6
+	movdqu	xmm6, %2
+	pslldq	xmm6, 2		;cargo y me quedo con el 
+				;pixel dos a derecha
+	pand	xmm6, xmm7
+	psubusw	xmm5, xmm6	; ya el operador aplicado 
+				;en xmm5 a los pixeles, 2, 4, 6, 8
+	pxor	xmm6, xmm6
+	packuswb	xmm5, xmm6
+	punpcklbw	xmm5, xmm6	;saturo los pixeles
+	movdqu	xmm6, [eax]
+	por	xmm5, xmm6
+	movdqu	[eax], xmm5	;copio los pixeles
+
+	;**********************
+	; PROCESO PIXEL 1,3,5
+	;**********************
+	movdqu	xmm5, %1	;cargo el primer registro y 
+				;enmascaro para pasar a word
+	psrldq	xmm5, 1
+	pand	xmm5, xmm7
+	movdqu	xmm6, %1	;cargo y me quedo con el pixel 
+				;una a derecha
+	pand	xmm6, xmm7
+%if %3 = 0
+	psllw	xmm6, 1		;multiplico por dos
+%endif
+	paddusw	xmm5, xmm6	;sumo el segundo pixel
+	movdqu	xmm6, %1
+	pslldq	xmm6, 1		;cargo y me quedo con el pixel 
+				;dos a derecha
+	pand	xmm6, xmm7
+	paddusw	xmm5, xmm6	; ya tengo acumulado en xmm5 la 
+				;parte positiva de los pixeles
+				;1, 3, 5
+
+	movdqu	xmm6, %2
+	psrldq	xmm6, 1
+	pand	xmm6, xmm7
+	psubusw	xmm5, xmm6
+	movdqu	xmm6, %2
+	pand	xmm6, xmm7
+%if %3 = 0
+	psllw	xmm6, 1		;multiplico por dos
+%endif	
+	psubusw	xmm5, xmm6
+	movdqu	xmm6, %2
+	pslldq	xmm6, 1		;cargo y me quedo con el pixel 
+				;dos a derecha
+	pand	xmm6, xmm7
+	psubusw	xmm5, xmm6	;ya el operador aplicado en xmm5 
+				;a los pixeles, 2, 4, 6, 8
+
+	pxor	xmm6, xmm6
+	packuswb	xmm5, xmm6
+	punpcklbw	xmm5, xmm6	;saturo los pixeles
+	pslldq	xmm5, 1
+	movdqu	xmm6, [eax]
+	por	xmm5, xmm6
+	movdqu	[eax], xmm5		;copio los pixeles
+
+	add		eax, edx	;salto la linea siguiente
+%endmacro
+
+\end{lstlisting}
+\end{enumerate}
+
+\subsubsection{Roberts} 
+\begin{enumerate}
+\item \textbf{Ambos 'ordenes}
+\subitem En el caso de \verb'Roberts' pueden cargarse seis filas de 16 pixeles y procesarse efectivamente $15 \times 5$ pixeles de la imagen de destino.  Se utilizan cinco registros de \verb'xmm' para cargar los pixeles de origen y dos registros para uso temporal y acumulador.  Simplemente se cargan, se mueven a los registros de uso temporal, se desplazan en el sentido correspondiente, se restan y se mueven (empaquetando y desempaquetando para saturar el dato) al destino.
+:
+\begin{lstlisting}[frame=single]
+%define REMAINDER	[ebp - 4]
+%define	STEP_X		15		
+%define RESERVED_BYTES	0
+
+
+;========================
+; MACRO robertsXY
+;========================
+; Cuerpo de codigo que aplica el operador de 
+;Roberts en el orden x o y
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	esX?
+;========================
+%macro	robertsXY 3
+	;procesamos la parte baja
+	movdqu		xmm7, %2
+	movdqu		xmm6, %1
+%if %3 = 0
+	psrldq		xmm6, 1		;desplazo para hacer 
+					;la aritmetica
+%else
+	psrldq		xmm7, 1
+%endif
+	punpcklbw	xmm7, xmm7
+	psllw		xmm7, 8		;limpio la parte alta 
+					;del word
+	psrlw		xmm7, 8
+	punpcklbw	xmm6, xmm6
+	psllw		xmm6, 8		;limpio la parte alta 
+					;del word
+	psrlw		xmm6, 8
+	psubusw		xmm6, xmm7
+
+	packuswb	xmm6, xmm6
+	
+	movdqu		xmm7, [eax]
+	por		xmm6, xmm7
+	movq		[eax], xmm6	;copio los 4 bytes 
+					;al destino
+	
+	add		eax, 8		;paso a los proximos 
+					;cuatro bytes
+
+	;procesamos la parte alta
+	movdqu		xmm7, %2
+	movdqu		xmm6, %1
+%if %3 = 0
+	psrldq		xmm6, 1
+%else
+	psrldq		xmm7, 1
+%endif
+	punpckhbw	xmm7, xmm7
+	psllw		xmm7, 8
+	psrlw		xmm7, 8
+	punpckhbw	xmm6, xmm6
+	psllw		xmm6, 8
+	psrlw		xmm6, 8
+	psubusw		xmm6, xmm7
+
+	packuswb	xmm6, xmm6
+ 	psllq		xmm6, 8		;limpio el byte más alto 
+					;pues no tiene dato valido
+ 	psrlq		xmm6, 8
+
+	movdqu		xmm7, [eax]
+	por		xmm6, xmm7
+	movq		[eax], xmm6	;copio los 4 bytes al destino
+	sub		eax, 8
+	add		eax, edx	;salto la linea siguiente
+%endmacro
+\end{lstlisting}
+\end{enumerate}
+
+\subsubsection{Frei-Chen} 
+\begin{enumerate}
+\item \textbf{Orden X}
+\subitem El funcionamiento es similar al de \verb'Sobel' y \verb'Prewitt', con la diferencia que en lugar de procesar en dos partes se procesa en cuatro, esto se debe a que las operaciones en precisi'on simple se realizan sobre flotantes de 32 bits, en lugar de hacerlo sobre valores enteros representados con 16 bits.  Para conseguirlo se mantienen dos registros para uso temporal y de acumulador, y sobre ellos se desempaquetan y transforman a valores de precisi'on simple las cuatro partes correspondientes del registro de 128 bits.  De esta forma, una vez que se procesaron los pixeles convertidos a precisi'on simple se escribe su resultado en la imagen de destino de a cuatro pixeles ($4 \times 8 bits$).  Antes de volcar el resultado en el destino se empaquetan y desempaquetan los datos para saturarlos.\\
+Para poder multiplicar los valores por la constante $\sqrt{2}$ lo calculamos en el registro \verb'mm7' de la \verb'FPU' y luego lo movemos a un registro de 128 bits como escalar y lo copiamos a trav'es de un \verb'shuffle'.
+\begin{lstlisting}[frame=single]
+%define REMAINDER	[ebp - 4]
+%define	STEP_X		14
+%define	STEP_Y		12
+%define RESERVED_BYTES	4
+
+;========================
+; MACRO obtener
+;========================
+; Recupera la parte correspondiente de un 
+; dato empaquetado a byte
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	registro3
+;	offset		indica si debe desplazar el dato original
+;========================
+%macro obtener 3-4 0
+	movdqu		%2, %3		;copio el dato
+%if %4 != 0
+	psrldq		%2, %4		;desplazo dos columnas
+%endif
+%if %1 = 2
+	punpckhbw	%2, %2		;desempaqueto la parte alta
+%elif %1 = 3
+	punpckhbw	%2, %2		;desempaqueto la parte alta
+%else
+	punpcklbw	%2, %2		;desempaqueto la parte baja
+%endif
+	psllw		%2, 8		;retiro el excedente alto
+	psrlw		%2, 8
+%if %1 = 1
+	punpckhbw	%2, %2		;desempaqueto la parte alta
+					;de la parte baja
+%elif %1 = 3
+	punpckhbw	%2, %2		;desempaqueto la parte alta 
+					;de de la parte alta
+%else
+	punpcklbw	%2, %2		;desempaqueto la parte baja 
+					;correspondiente
+%endif
+	pslld		%2, 24
+	psrld		%2, 24
+	cvtdq2ps	%2, %2		;convierto a precision simple
+%endmacro
+
+;========================
+; MACRO cargarRaiz2
+;========================
+; Carga raiz de dos en el registro xmm7
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;========================
+%macro cargarRaiz2 1
+ 	movq2dq		%1, mm7		;copio la raiz en precision 
+					;doble
+	pshufd		%1, %1, 0x00 	;copio el mas bajo a todos 
+					;los dword ps
+%endmacro
+
+;========================
+; MACRO aplicarOperadorX
+;========================
+; Aplicar operador a cuatro bytes
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2	registros sobre los cuales operar 
+;	registro3	registros sobre los cuales operar 
+;	word		word a obtener
+;	salta a la linea?	salta a la linea siguiente?
+;========================
+%macro aplicarOperadorX 4-5 0
+	;**************************
+	; VOY A APLICAR EL OPERADOR
+	; A LA PARTE CORRESPONDIENTE
+	;**************************
+	cargarRaiz2	xmm7
+	obtener		%4, xmm6, %2, 2	;obtengo la parte
+					;correspondiente
+					;de la segunda fila
+	mulps		xmm6, xmm7
+
+	obtener 	%4, xmm7, %1, 2	;obtengo la parte
+					;correspondiente
+					;de la primera fila
+	addps		xmm6, xmm7	;sumo
+	obtener		%4, xmm7, %3, 2	;obtengo la parte
+					;correspondiente
+					;de la tercera fila
+	addps		xmm6, xmm7	;sumo
+
+	obtener		%4, xmm7, %1	;obtengo la parte
+					;correspondiente
+					;de la primera fila
+	subps		xmm6, xmm7	;resto
+	obtener		%4, xmm7, %3	;obtengo la parte
+					;correspondiente
+					;de la tercera fila
+	subps		xmm6, xmm7	;resto
+					;aca estoy usando un
+					;truco que es dividir
+					;todo menos un item por
+					;raiz de dos
+					;sumar el item y
+					;multiplicar todo
+					;por raiz de dos, i.e: 
+					;((a+b+c-d-f)/2^(.5))-e*2^(.5)
+	cargarRaiz2	xmm7
+	divps		xmm6, xmm7
+	obtener		%4, xmm7, %2	;obtengo la parte
+					;correspondiente
+					;de la segunda fila
+	subps		xmm6, xmm7
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
+	;************************
+	; TERMINE COPIO A DESTINO
+	;************************
+	cvttps2dq	xmm6, xmm6
+	packusdw	xmm6, xmm6
+	packuswb	xmm6, xmm6
+	movd		[eax], xmm6	;copio los 4 bytes al destino
+%if %5 = 0
+	add		eax, 4		;salto la linea siguiente
+%endif
+%endmacro
+;========================
+; MACRO freichenX
+;========================
+; Cuerpo de codigo que aplica el operador de freichen en el orden x
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	registro3
+;	procesaAmbos	indica si debe procesar los datos mas altos
+;========================
+%macro	freiChenX 3-4 0
+%if %4 = 0
+	aplicarOperadorX %1, %2, %3, 0
+	aplicarOperadorX %1, %2, %3, 1
+	aplicarOperadorX %1, %2, %3, 2
+	aplicarOperadorX %1, %2, %3, 3, 1
+	sub		eax, 12
+%else
+	aplicarOperadorX %1, %2, %3, 0, 1
+%endif
+	add		eax, edx	;salto la linea siguiente
+%endmacro
+\end{lstlisting}
+\item \textbf{Orden Y}
+\subitem Otra vez, el algoritmo para la aplicaci'on del operador en el orden Y guarda muchas similitudes con su contraparte de \verb'Sobel' o \verb'Prewitt' en el sentido que ha de ser cargado de a cuatro l'ineas (cuatro registros) reservando tres registros para la aplicaci'on de m'ascaras, carga de datos temporales y acumulaci'on.  Y tambi'en ser'an ubicados en su lugar a partir de un filtro aplicado con una m'ascara que selecciona los pixeles correspondientes, procesando en paralelo cuatro de los bytes, operando sobre 'estos y avanzando el 'indice de la imagen destino, rotando los registros cargados, y as'i procesar todos los pixeles posibles dentro de las l'ineas almacenadas en registros de 128 bits.  En cada proceso y al igual que en el algoritmo de orden x se convierten los datos a precisi'on simple y luego se transforman a enteros de 32 bits empaquetados, para poder empaquetar y desempaquetar con facilidad se descartan los valores negativos.  Otra vez en lugar de mover los datos a destino con una operaci'on de copia directa estamos usando una operaci'on de \verb'por' para poder escribir los pixeles procesados en paralelo, conservando los que han sido escritos anteriormente.
+\begin{lstlisting}[frame=single]
+;========================
+; MACRO aplicarOperadorY
+;========================
+; Aplica el operador freiChen en y a cuatro pixeles
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;	esGrupoMasBajo?	indica si es el grupo mas bajo
+;========================
+%macro aplicarOperadorY 2-3 0
+	movdqu		xmm5, %1	;cargo el primer registro
+					;y enmascaro para pasar a word
+	armarMascara	xmm7
+	pand		xmm5, xmm7
+	cvtdq2ps	xmm5, xmm5	;convierto a precision simple
+	
+	movdqu		xmm6, %1
+	pslldq		xmm6, 2		;cargo y me quedo con el
+					;pixel dos a derecha
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	addps		xmm5, xmm6
+
+	movdqu		xmm6, %2
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6
+
+	movdqu		xmm6, %2
+	pslldq		xmm6, 2		;cargo y me quedo con el
+					;pixel dos a derecha
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	subps		xmm5, xmm6	;ya el operador aplicado en
+					;xmm5 a los pixeles
+					;2, 4, 6, 8
+
+
+	movdqu		xmm6, %1	;cargo y me quedo con el pixel
+					;una a derecha
+	pslldq		xmm6, 1
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6	;lo mismo enmascaro y convierto
+					;a precision simple luego
+					;de desplazar
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7		
+	addps		xmm5, xmm6	;multiplico por raiz de
+					;dos y acumulo
+
+      
+	movdqu		xmm6, %2
+	pslldq		xmm6, 1
+	armarMascara	xmm7
+	pand		xmm6, xmm7
+	cvtdq2ps	xmm6, xmm6
+	cargarRaiz2	xmm7
+	mulps		xmm6, xmm7
+	subps		xmm5, xmm6
+
+	cvttps2dq	xmm5, xmm5
+
+	pxor		xmm6, xmm6
+
+;Descartamos los valores negativos
+	movdqu		xmm7, xmm5
+	pcmpgtd		xmm7, xmm6
+	pand		xmm5, xmm7
+
+	packssdw	xmm5, xmm6
+	packsswb	xmm5, xmm6
+	punpcklbw	xmm5, xmm6	;saturo los pixeles
+	punpcklwd	xmm5, xmm6	;saturo los pixeles
+ 	movdqu		xmm6, [eax]	
+ 	por		xmm5, xmm6	
+	movdqu		[eax], xmm5	;copio los pixeles
+%if %3 = 0
+	inc		eax
+	movdqu		xmm7, %1	;simulando rotates
+	pslldq		xmm7, 15
+ 	psrldq		%1, 1
+	por		%1, xmm7
+	movdqu		xmm7, %2
+	pslldq		xmm7, 15
+ 	psrldq		%2, 1
+	por		%2, xmm7
+%else
+	movdqu		xmm7, %1	;simulando rotates para
+					;dejar como estaba
+	psrldq		xmm7, 11
+ 	pslldq		%1, 3
+	por		%1, xmm7
+	movdqu		xmm7, %2
+	psrldq		xmm7, 11
+ 	pslldq		%2, 3
+	por		%2, xmm7
+
+	sub		eax, 3
+	add		eax, edx	;salto la linea siguiente
+	;add		eax, edx	;salto la linea siguiente
+%endif
+%endmacro
+
+;========================
+; MACRO armarMascara
+;========================
+; Arma la mascara para seleccionar pixeles pares o impares
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;========================
+
+;000000ff000000ff 000000ff00000000
+%macro armarMascara 1
+	pcmpeqb	%1, %1			;armo la mascara
+					;paso todo a uno
+	pslld	%1, 24
+	psrld	%1, 24			;descarto los tres primeros
+					;bytes en cada dword
+	psrldq	%1, 1			;descarto el ultimo byte
+	pslldq	%1, 1
+%endmacro
+;========================
+; MACRO freichenY
+;========================
+; Cuerpo de codigo que aplica el operador de freichen en el orden y
+; Entrada:
+;	registro1	registros sobre los cuales operar 
+;	registro2
+;========================
+%macro	freiChenY 2
+	; PROCESO PIXEL 3,7,11,15
+	aplicarOperadorY %1, %2
+	;PROCESO PIXEL 2,6,10,14
+	aplicarOperadorY %1, %2
+	; PROCESO PIXEL 1,5,9,13
+	aplicarOperadorY %1, %2
+	; PROCESO PIXEL 0,4,8,12
+	aplicarOperadorY %1, %2, 1
+%endmacro
+
+\end{lstlisting}
+\end{enumerate}
+
+
+\newpage
+\section{Resultados}
+Estos resultados se cuentan en ticks y reflejan un promedio de los tiempos transcurridos durante la ejecuci'on de cada algoritmo en 100 corridas.
+\begin{center}
+ \begin{tabular}{| r | c |}
+\hline
+Algoritmo	&	Tiempo en ticks \\
+\hline
+Sobel en x (\verb'openCV')	&	9232651\\
+Sobel en y (\verb'openCV')	&	8605809\\
+Sobel en x e y (\verb'openCV')	&	8715342\\
+\hline
+Sobel en x (\verb'asm')	&	8759303\\
+Sobel en y (\verb'asm')	&	8465688\\
+Sobel en x e y (\verb'asm')	&	16477878\\
+\hline
+\end{tabular}
+\end{center}
+\section{Conclusiones}
+Hemos podido observar realmente la mejora en tiempo de ejecuci'on de los algoritmos que sacan provecho del procesamiento de valores en paralelo a trav'es de la tecnolog'ia de procesamiento de se\~{n}ales, en particular en aquellos casos en los que no solo optimizamos la carga de valores a los registros de 128 bits, sino en los que pudimos escribir a su vez varios bytes a memoria en una sola operaci'on.  En cuanto al uso concreto, el pasaje a datos de precisi'on simple no parece justificarse frente a la penalizaci'on de tiempo en la que incurre.  Por lo que la aplicaci'on de un operador de \verb'Frei-Chen' en aplicaciones cr'iticas respecto del tiempo no parece justificarse, al menos en nuestra escasa experiencia.\\
+La optimizaci'on de estas operaciones, sin embargo, demostr'o ser m'as bien costosa y dif'icil de rastrear, presentando un dilema a considerar en lo que respecta a la decisi'on tiempo de ejecuci'on versus tiempo de desarrollo.
+\end{document}
