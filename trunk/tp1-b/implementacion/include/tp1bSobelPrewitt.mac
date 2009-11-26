@@ -115,7 +115,7 @@
 ;========================
 ; MACRO sobelPrewittY
 ;========================
-; Cuerpo de codigo que aplica los operadores de Sobel y Prewitt en el orden x
+; Cuerpo de codigo que aplica los operadores de Sobel y Prewitt en el orden y
 ; Entrada:
 ;	registro1	registros sobre los cuales operar 
 ;	registro2
