@@ -1,0 +1,152 @@
+\usepackage{labels} 
+\usepackage{color}
+\definecolor{gray97}{gray}{.97}
+\definecolor{gray75}{gray}{.75}
+\definecolor{gray45}{gray}{.45}
+
+\usepackage{listings}
+\lstset{ frame=Ltb,
+     framerule=0pt,
+     aboveskip=0.5cm,
+     framextopmargin=3pt,
+     framexbottommargin=3pt,
+     framexleftmargin=0.4cm,
+     framesep=0pt,
+     rulesep=.4pt,
+     rulesepcolor=\color{gray97},
+     %
+     stringstyle=\ttfamily,
+     showstringspaces = false,
+     basicstyle=\small\ttfamily,
+     commentstyle=\color{gray45},
+     keywordstyle=\bfseries,
+     %
+     numbers=left,
+     numbersep=15pt,
+     numberstyle=\tiny,
+     numberfirstline = false,
+     breaklines=true,
+   }
+ 
+% minimizar fragmentado de listados
+\lstnewenvironment{listing}[1][]
+   {\lstset{#1}\pagebreak[0]}{\pagebreak[0]}
+ 
+\lstdefinestyle{consola}
+   {basicstyle=\scriptsize\bf\ttfamily,
+    backgroundcolor=\color{gray75},
+   }
+ 
+\lstdefinestyle{C}
+   {language=C,
+   }
+\usepackage{enumerate}
+
+\usepackage{url}
+
+%% Define a new 'leo' style for the package that will use a smaller font.
+\makeatletter
+\def\url@leostyle{%
+  \@ifundefined{selectfont}{\def\UrlFont{\sf}}{\def\UrlFont{\small\ttfamily}}}
+\makeatother
+%% Now actually use the newly defined style.
+\urlstyle{leo}
+
+
+
+ \usepackage{algorithm}
+ \usepackage{algorithmic}
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\listalgorithmname}{Lista de algoritmos}
+\renewcommand{\algorithmicrequire}{\textbf{Requiere:}}
+\renewcommand{\algorithmicensure}{\textbf{Asegura:}}
+\renewcommand{\algorithmicend}{\textbf{fin}}
+\renewcommand{\algorithmicif}{\textbf{si}}
+\renewcommand{\algorithmicthen}{\textbf{entonces}}
+\renewcommand{\algorithmicelse}{\textbf{si no}}
+\renewcommand{\algorithmicelsif}{\algorithmicelse,\ \algorithmicif}
+\renewcommand{\algorithmicendif}{\algorithmicend\ \algorithmicif}
+\renewcommand{\algorithmicfor}{\textbf{para}}
+\renewcommand{\algorithmicforall}{\textbf{para todo}}
+\renewcommand{\algorithmicdo}{\textbf{hacer}}
+\renewcommand{\algorithmicendfor}{\algorithmicend\ \algorithmicfor}
+\renewcommand{\algorithmicwhile}{\textbf{mientras}}
+\renewcommand{\algorithmicendwhile}{\algorithmicend\ \algorithmicwhile}
+\renewcommand{\algorithmicloop}{\textbf{repetir}}
+\renewcommand{\algorithmicendloop}{\algorithmicend\ \algorithmicloop}
+\renewcommand{\algorithmicrepeat}{\textbf{repetir}}
+\renewcommand{\algorithmicuntil}{\textbf{hasta que}}
+\renewcommand{\algorithmicprint}{\textbf{imprimir}} 
+\renewcommand{\algorithmicreturn}{\textbf{devolver}} 
+\renewcommand{\algorithmictrue}{\textbf{cierto }} 
+\renewcommand{\algorithmicfalse}{\textbf{falso }} 
+
+%\documentclass{acmconf}
+
+\usepackage[paper=a4paper,dvips,top=1.5cm,left=1.5cm,right=1.5cm,
+    foot=2cm,bottom=4.5cm]{geometry}
+
+
+
+\usepackage{times}
+ \usepackage[dvips]{graphicx}
+\usepackage[fleqn]{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsopn}
+\usepackage{amstext}
+\usepackage{xspace}
+% \usepackage{array}
+% \usepackage{epsfig}
+% \usepackage{easyeqn}
+
+\numberwithin{figure}{section}
+
+\newcommand\CC{\Lang{\mbox{C++}}\xspace}
+\newcommand\Lang[1]{\textsc{#1}}
+\newcommand{\kw}[1]{\texttt{\textbf{#1}}}
+\newcommand{\cd}[1]{\texttt{#1}}
+
+\newcommand\Naturals{\ensuremath{\mathbb{N}}\xspace}
+\newcommand\Integers{\ensuremath{\mathbb{Z}}\xspace}
+\newcommand\Rationals{\ensuremath{\mathbb{Q}}\xspace}
+\newcommand\Reals{\ensuremath{\mathbb{R}}\xspace}
+\newcommand\Complex{\ensuremath{\mathbb{C}}\xspace}
+
+\newcommand\norm[1]{\ensuremath{\lVert#1\rVert}}
+\newcommand\abs[1]{\ensuremath{\lvert#1\rvert}}
+\newcommand\ceil[1]{\ensuremath{\lceil#1\rceil}}
+\newcommand\floor[1]{\ensuremath{\lfloor#1\rfloor}}
+\newcommand\set[1]{\ensuremath{\{#1\}}}
+\newcommand\interval[1]{\ensuremath{[#1]}}
+\newcommand\angular[1]{\ensuremath{\langle#1\rangle}}
+
+\newcommand\Norm[1]{\ensuremath{\left\lVert#1\right\rVert}}
+\newcommand\Abs[1]{\ensuremath{\left\lvert#1\right\rvert}}
+\newcommand\Ceil[1]{\ensuremath{\left\lceil#1\right\rceil}}
+\newcommand\Floor[1]{\ensuremath{\left\lfloor#1\right\rfloor}}
+\newcommand\Set[1]{\ensuremath{\left\{#1\right\}}}
+\newcommand\Interval[1]{\ensuremath{\left[#1\right]}}
+\newcommand\Angular[1]{\ensuremath{\left\langle#1\right\rangle}}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{example}[theorem]{Example}
+
+\newcommand\Cls[1]{\textsf{#1}}
+\newcommand\Fig[1]{Figura~\ref{Figura:#1}}
+\newcommand\Lin[1]{Línea~\ref{lin:#1}}
+\newcommand\Alg[1]{Algoritmo~\ref{alg:#1}}
+\newcommand\lin[1]{(\ref{lin:#1})}
+
+\newenvironment{excerpt}{\begin{quote}\begin{minipage}\textwidth}{\end{minipage}\end{quote}}
+
+\setcounter{topnumber}{0}
+\setcounter{bottomnumber}{0}
+\setcounter{totalnumber}{20}
+\renewcommand{\textfraction}{0.01}
+\pagestyle{plain}
