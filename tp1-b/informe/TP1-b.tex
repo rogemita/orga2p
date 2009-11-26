@@ -34,7 +34,7 @@ Mita, Rogelio Iv\'an  & 635/07 & rogeliomita@gmail.com \\
 \hline
 \end{tabular}
 }
-\date{5 de Octubre de 2009} 
+\date{26 de noviembre de 2009} 
 
 
 \begin{document}
@@ -88,7 +88,7 @@ Nuestra motivaci'on a la hora de escribir el c'odigo en lenguaje ensamblador vie
  Las funciones en c'odigo ensamblador estan divididas seg'un el operador que se desea aplicar a la imagen para buscar bordes.
 \end{minipage}
 \end{center}
-En particular, para este trabajo se ha hecho uso de la tecnolog'ia \verb'SSE' de \verb'Intel', cuyo diseño es motivado por la necesidad de procesar varios datos en paralelo para operar sobre arreglos de bytes que pueden representar informaci'on de imagen (nuestro caso), sonido o video, o cualquier otro uso que pueda darse al procesamiento paralelo de se\~{n}ales o datos.\\
+En particular, para este trabajo se ha hecho uso de la tecnolog'ia \verb'SSE' de \verb'Intel', cuyo dise'no es motivado por la necesidad de procesar varios datos en paralelo para operar sobre arreglos de bytes que pueden representar informaci'on de imagen (nuestro caso), sonido o video, o cualquier otro uso que pueda darse al procesamiento paralelo de se\~{n}ales o datos.\\
 Los registros tienen un tama\~{n}o de 128 bits, permitiendo en nuestro caso llegar a cargar hasta ocho pixeles en un mismo registro.  La justificaci'on del uso de registros de mayor tama\~{n}o viene dada por la reducci'on en la cantidad de accesos a memoria realizados para procesar una misma cantidad de pixeles.
 
 
@@ -293,11 +293,11 @@ Estos son las macros utilizadas en cada funci'on.  Para este trabajo s'olo utili
 
 \subsection{Funciones implementadas}
 \begin{itemize}
-\item Intentamos reducir el acceso a memoria utilizando registros para aquellas operaciones que se encontraban dentro de los ciclos, evitando as'i m'ultiples accesos a memoria. Si bien esto llev'o a tener un codigo menos legible, lo explicaremos en detalle.
+\item Intentamos reducir el acceso a memoria utilizando registros para aquellas operaciones que se encontraban dentro de los ciclos, evitando as'i m'ultiples accesos a memoria. Si bien esto llev'o a tener un c'odigo menos legible, lo explicaremos en detalle.
 \item Variables locales
 \subitem \textit{SRC} Contiene el puntero a la imagen de entrada.
 \subitem \textit{DST} Contiene el puntero a la imagen resultado.
-\subitem \textit{WIDTH} Contiene el tamano de ancho de la imagen.
+\subitem \textit{WIDTH} Contiene el tama'no de ancho de la imagen.
 \subitem \textit{HEIGHT} Contiene la altura de la imagen.
 \subitem \textit{XORDER} Variable que especifica si el c'alculo debe hacerse sobre la derivada X.
 \subitem \textit{YORDER} Variable que especifica si el c'alculo debe hacerse sobre la derivada Y.
@@ -443,7 +443,7 @@ Presentaremos la el c'odigo de la funci'on completa de \verb'Sobel' y \verb'Prew
 
 \item \textbf{Orden Y}
 \subitem En el caso del orden Y, para aprovechar la carga de los pixeles en los registros \verb'xmm', y sin hacer uso de las operaciones propias de \verb'sse3' generamos una m'ascara en uno de los registros que se mantiene en memoria y se utiliza para filtrar los pixeles intercalados de a byte, para poder realizar esta secuencia de operaciones: $filtrar\rightarrow desplazar\rightarrow sumar/restar$.\\
-Lo que vamos a hacer es operar sobre los pixeles de forma intercalada, primero sobre los pares, filtramos, acomodamos, operamos, y luego saturamos.  Esto nos dejar'a procesados los pixeles pares primero, luego los impares, y es por esto que debemos aplicar una operaci'o \verb'por' en lugar de, por ej. \verb'movdqu' para conservar los pixeles ya calculados.
+Lo que vamos a hacer es operar sobre los pixeles de forma intercalada, primero sobre los pares, filtramos, acomodamos, operamos, y luego saturamos.  Esto nos dejar'a procesados los pixeles pares primero, luego los impares, y es por esto que debemos aplicar una operaci'on \verb'por' en lugar de, por ej. \verb'movdqu' para conservar los pixeles ya calculados.
 
 \begin{lstlisting}[frame=single]
 ;========================
@@ -940,22 +940,166 @@ Para poder multiplicar los valores por la constante $\sqrt{2}$ lo calculamos en 
 
 \newpage
 \section{Resultados}
-Estos resultados se cuentan en ticks y reflejan un promedio de los tiempos transcurridos durante la ejecuci'on de cada algoritmo en 100 corridas.
-\begin{center}
- \begin{tabular}{| r | c |}
-\hline
-Algoritmo	&	Tiempo en ticks \\
-\hline
-Sobel en x (\verb'openCV')	&	9232651\\
-Sobel en y (\verb'openCV')	&	8605809\\
-Sobel en x e y (\verb'openCV')	&	8715342\\
-\hline
-Sobel en x (\verb'asm')	&	8759303\\
-Sobel en y (\verb'asm')	&	8465688\\
-Sobel en x e y (\verb'asm')	&	16477878\\
-\hline
-\end{tabular}
-\end{center}
+\begin{lstlisting}[frame=single]
+imagen 1024 x 768:
+
+cvSobel01 tarda en un promedio de 100 corridas: 21496417
+cvSobel10 tarda en un promedio de 100 corridas: 21240004
+cvSobel11 tarda en un promedio de 100 corridas: 20093462
+asmSobel01 tarda en un promedio de 100 corridas: 2186426
+asmSobel10 tarda en un promedio de 100 corridas: 3156124
+asmSobel11 tarda en un promedio de 100 corridas: 5329166
+cvSobel10 demoro: 21334379
+cvSobel01 demoro: 21298612
+cvSobel11 demoro: 20207645
+asmSobel10 demoro: 2548121
+asmSobel01 demoro: 3217386
+asmSobel11 demoro: 5721240
+asmPrewitt10 demoro: 2496433
+asmPrewitt01 demoro: 3588309
+asmPrewitt11 demoro: 5683244
+asmRoberts10 demoro: 2055716
+asmRoberts01 demoro: 2052588
+asmRoberts11 demoro: 4284935
+asmFreiChen10 demoro: 8669932
+asmFreiChen01 demoro: 11275539
+asmFreiChen11 demoro: 19450508
+---------------------------------------------------
+Proposito general:
+asmSobel01 tarda en un promedio de 100 corridas: 21722034
+asmSobel10 tarda en un promedio de 100 corridas: 20952528
+asmSobel11 tarda en un promedio de 100 corridas: 40506787
+asmSobel10 demoro: 21720212
+asmSobel01 demoro: 21030930
+asmSobel11 demoro: 40562000
+asmPrewitt10 demoro: 20541695
+asmPrewitt01 demoro: 21027343
+asmPrewitt11 demoro: 39380101
+asmRoberts10 demoro: 21572550
+asmRoberts01 demoro: 9251153
+asmRoberts11 demoro: 28648697
+
+
+
+Imagen 1600 x 1200:
+
+cvSobel01 tarda en un promedio de 100 corridas: 64629757
+cvSobel10 tarda en un promedio de 100 corridas: 58466592
+cvSobel11 tarda en un promedio de 100 corridas: 60267866
+asmSobel01 tarda en un promedio de 100 corridas: 5675814
+asmSobel10 tarda en un promedio de 100 corridas: 8027895
+asmSobel11 tarda en un promedio de 100 corridas: 13336611
+cvSobel10 demoro: 64738711
+cvSobel01 demoro: 58334633
+cvSobel11 demoro: 59916075
+asmSobel10 demoro: 6058315
+asmSobel01 demoro: 9326455
+asmSobel11 demoro: 13821527
+asmPrewitt10 demoro: 6240113
+asmPrewitt01 demoro: 8580648
+asmPrewitt11 demoro: 14136860
+asmRoberts10 demoro: 6364043
+asmRoberts01 demoro: 5500435
+asmRoberts11 demoro: 10229359
+asmFreiChen10 demoro: 20931258
+asmFreiChen01 demoro: 27253389
+asmFreiChen11 demoro: 47268219
+--------------------------------------------------
+Proposito general:
+asmSobel01 tarda en un promedio de 100 corridas: 62167096
+asmSobel10 tarda en un promedio de 100 corridas: 57031508
+asmSobel11 tarda en un promedio de 100 corridas: 113866178
+asmSobel10 demoro: 62156131
+asmSobel01 demoro: 57158743
+asmSobel11 demoro: 113898691
+asmPrewitt10 demoro: 59797730
+asmPrewitt01 demoro: 58153855
+asmPrewitt11 demoro: 112996535
+asmRoberts10 demoro: 61708300
+asmRoberts01 demoro: 44887055
+asmRoberts11 demoro: 104265539
+
+
+
+Imagen 3296 x 2472:
+
+cvSobel01 tarda en un promedio de 100 corridas: 264058666
+cvSobel10 tarda en un promedio de 100 corridas: 242124053
+cvSobel11 tarda en un promedio de 100 corridas: 246805669
+asmSobel01 tarda en un promedio de 100 corridas: 24710288
+asmSobel10 tarda en un promedio de 100 corridas: 34586703
+asmSobel11 tarda en un promedio de 100 corridas: 59155348
+cvSobel10 demoro: 263067537
+cvSobel01 demoro: 241957668
+cvSobel11 demoro: 246281108
+asmSobel10 demoro: 25204770
+asmSobel01 demoro: 34600100
+asmSobel11 demoro: 59122311
+asmPrewitt10 demoro: 25534680
+asmPrewitt01 demoro: 34851411
+asmPrewitt11 demoro: 60214807
+asmRoberts10 demoro: 23821250
+asmRoberts01 demoro: 23942656
+asmRoberts11 demoro: 48725179
+asmFreiChen10 demoro: 87244739
+asmFreiChen01 demoro: 121413685
+asmFreiChen11 demoro: 201409744
+-----------------------------------------------------
+proposito general:
+asmSobel01 tarda en un promedio de 100 corridas: 254878321
+asmSobel10 tarda en un promedio de 100 corridas: 238509534
+asmSobel11 tarda en un promedio de 100 corridas: 470568287
+asmSobel10 demoro: 260648870
+asmSobel01 demoro: 238654780
+asmSobel11 demoro: 473785606
+asmPrewitt10 demoro: 245286260
+asmPrewitt01 demoro: 242413650
+asmPrewitt11 demoro: 465092188
+asmRoberts10 demoro: 259926030
+asmRoberts01 demoro: 188326068
+asmRoberts11 demoro: 425289272
+
+
+
+Imagen 9466 x 7781 (50 corridas):
+
+cvSobel01 tarda en un promedio de 50 corridas: 1887282788
+cvSobel10 tarda en un promedio de 50 corridas: 1879896597
+cvSobel11 tarda en un promedio de 50 corridas: 1762629576
+asmSobel01 tarda en un promedio de 50 corridas: 210250426
+asmSobel10 tarda en un promedio de 50 corridas: 301825348
+asmSobel11 tarda en un promedio de 50 corridas: 511810459
+cvSobel10 demoro: 1880594264
+cvSobel01 demoro: 1877404826
+cvSobel11 demoro: 1759663583
+asmSobel10 demoro: 209304910
+asmSobel01 demoro: 301189136
+asmSobel11 demoro: 510795948
+asmPrewitt10 demoro: 216600808
+asmPrewitt01 demoro: 308188096
+asmPrewitt11 demoro: 523424262
+asmRoberts10 demoro: 187772463
+asmRoberts01 demoro: 188300933
+asmRoberts11 demoro: 375835966
+asmFreiChen10 demoro: 774139846
+asmFreiChen01 demoro: 1004473840
+asmFreiChen11 demoro: 1780969062
+-------------------------------------------------------------------------------------------
+proposito general (25 corridas):
+asmSobel01 tarda en un promedio de 25 corridas: 1951103136
+asmSobel10 tarda en un promedio de 25 corridas: 1860946539
+asmSobel11 tarda en un promedio de 25 corridas: -688392667
+asmSobel10 demoro: 1950112160
+asmSobel01 demoro: 1859535182
+asmSobel11 demoro: -687698119
+asmPrewitt10 demoro: 1836947486
+asmPrewitt01 demoro: 1865921386
+asmPrewitt11 demoro: -796757633
+asmRoberts10 demoro: 1961670537
+asmRoberts01 demoro: 775878759
+asmRoberts11 demoro: -1761325656
+\end{lstlisting}
+
 \section{Conclusiones}
 Hemos podido observar realmente la mejora en tiempo de ejecuci'on de los algoritmos que sacan provecho del procesamiento de valores en paralelo a trav'es de la tecnolog'ia de procesamiento de se\~{n}ales, en particular en aquellos casos en los que no solo optimizamos la carga de valores a los registros de 128 bits, sino en los que pudimos escribir a su vez varios bytes a memoria en una sola operaci'on.  En cuanto al uso concreto, el pasaje a datos de precisi'on simple no parece justificarse frente a la penalizaci'on de tiempo en la que incurre.  Por lo que la aplicaci'on de un operador de \verb'Frei-Chen' en aplicaciones cr'iticas respecto del tiempo no parece justificarse, al menos en nuestra escasa experiencia.\\
 La optimizaci'on de estas operaciones, sin embargo, demostr'o ser m'as bien costosa y dif'icil de rastrear, presentando un dilema a considerar en lo que respecta a la decisi'on tiempo de ejecuci'on versus tiempo de desarrollo.
