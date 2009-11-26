@@ -1,0 +1,158 @@
+imagen 1024 x 768:
+
+cvSobel01 tarda en un promedio de 100 corridas: 21496417
+cvSobel10 tarda en un promedio de 100 corridas: 21240004
+cvSobel11 tarda en un promedio de 100 corridas: 20093462
+asmSobel01 tarda en un promedio de 100 corridas: 2186426
+asmSobel10 tarda en un promedio de 100 corridas: 3156124
+asmSobel11 tarda en un promedio de 100 corridas: 5329166
+cvSobel10 demoro: 21334379
+cvSobel01 demoro: 21298612
+cvSobel11 demoro: 20207645
+asmSobel10 demoro: 2548121
+asmSobel01 demoro: 3217386
+asmSobel11 demoro: 5721240
+asmPrewitt10 demoro: 2496433
+asmPrewitt01 demoro: 3588309
+asmPrewitt11 demoro: 5683244
+asmRoberts10 demoro: 2055716
+asmRoberts01 demoro: 2052588
+asmRoberts11 demoro: 4284935
+asmFreiChen10 demoro: 8669932
+asmFreiChen01 demoro: 11275539
+asmFreiChen11 demoro: 19450508
+---------------------------------------------------
+Proposito general:
+asmSobel01 tarda en un promedio de 100 corridas: 21722034
+asmSobel10 tarda en un promedio de 100 corridas: 20952528
+asmSobel11 tarda en un promedio de 100 corridas: 40506787
+asmSobel10 demoro: 21720212
+asmSobel01 demoro: 21030930
+asmSobel11 demoro: 40562000
+asmPrewitt10 demoro: 20541695
+asmPrewitt01 demoro: 21027343
+asmPrewitt11 demoro: 39380101
+asmRoberts10 demoro: 21572550
+asmRoberts01 demoro: 9251153
+asmRoberts11 demoro: 28648697
+
+
+
+Imagen 1600 x 1200:
+
+cvSobel01 tarda en un promedio de 100 corridas: 64629757
+cvSobel10 tarda en un promedio de 100 corridas: 58466592
+cvSobel11 tarda en un promedio de 100 corridas: 60267866
+asmSobel01 tarda en un promedio de 100 corridas: 5675814
+asmSobel10 tarda en un promedio de 100 corridas: 8027895
+asmSobel11 tarda en un promedio de 100 corridas: 13336611
+cvSobel10 demoro: 64738711
+cvSobel01 demoro: 58334633
+cvSobel11 demoro: 59916075
+asmSobel10 demoro: 6058315
+asmSobel01 demoro: 9326455
+asmSobel11 demoro: 13821527
+asmPrewitt10 demoro: 6240113
+asmPrewitt01 demoro: 8580648
+asmPrewitt11 demoro: 14136860
+asmRoberts10 demoro: 6364043
+asmRoberts01 demoro: 5500435
+asmRoberts11 demoro: 10229359
+asmFreiChen10 demoro: 20931258
+asmFreiChen01 demoro: 27253389
+asmFreiChen11 demoro: 47268219
+--------------------------------------------------
+Proposito general:
+asmSobel01 tarda en un promedio de 100 corridas: 62167096
+asmSobel10 tarda en un promedio de 100 corridas: 57031508
+asmSobel11 tarda en un promedio de 100 corridas: 113866178
+asmSobel10 demoro: 62156131
+asmSobel01 demoro: 57158743
+asmSobel11 demoro: 113898691
+asmPrewitt10 demoro: 59797730
+asmPrewitt01 demoro: 58153855
+asmPrewitt11 demoro: 112996535
+asmRoberts10 demoro: 61708300
+asmRoberts01 demoro: 44887055
+asmRoberts11 demoro: 104265539
+
+
+
+Imagen 3296 x 2472:
+
+cvSobel01 tarda en un promedio de 100 corridas: 264058666
+cvSobel10 tarda en un promedio de 100 corridas: 242124053
+cvSobel11 tarda en un promedio de 100 corridas: 246805669
+asmSobel01 tarda en un promedio de 100 corridas: 24710288
+asmSobel10 tarda en un promedio de 100 corridas: 34586703
+asmSobel11 tarda en un promedio de 100 corridas: 59155348
+cvSobel10 demoro: 263067537
+cvSobel01 demoro: 241957668
+cvSobel11 demoro: 246281108
+asmSobel10 demoro: 25204770
+asmSobel01 demoro: 34600100
+asmSobel11 demoro: 59122311
+asmPrewitt10 demoro: 25534680
+asmPrewitt01 demoro: 34851411
+asmPrewitt11 demoro: 60214807
+asmRoberts10 demoro: 23821250
+asmRoberts01 demoro: 23942656
+asmRoberts11 demoro: 48725179
+asmFreiChen10 demoro: 87244739
+asmFreiChen01 demoro: 121413685
+asmFreiChen11 demoro: 201409744
+-----------------------------------------------------
+proposito general:
+asmSobel01 tarda en un promedio de 100 corridas: 254878321
+asmSobel10 tarda en un promedio de 100 corridas: 238509534
+asmSobel11 tarda en un promedio de 100 corridas: 470568287
+asmSobel10 demoro: 260648870
+asmSobel01 demoro: 238654780
+asmSobel11 demoro: 473785606
+asmPrewitt10 demoro: 245286260
+asmPrewitt01 demoro: 242413650
+asmPrewitt11 demoro: 465092188
+asmRoberts10 demoro: 259926030
+asmRoberts01 demoro: 188326068
+asmRoberts11 demoro: 425289272
+
+
+
+Imagen 9466 x 7781 (50 corridas):
+
+cvSobel01 tarda en un promedio de 50 corridas: 1887282788
+cvSobel10 tarda en un promedio de 50 corridas: 1879896597
+cvSobel11 tarda en un promedio de 50 corridas: 1762629576
+asmSobel01 tarda en un promedio de 50 corridas: 210250426
+asmSobel10 tarda en un promedio de 50 corridas: 301825348
+asmSobel11 tarda en un promedio de 50 corridas: 511810459
+cvSobel10 demoro: 1880594264
+cvSobel01 demoro: 1877404826
+cvSobel11 demoro: 1759663583
+asmSobel10 demoro: 209304910
+asmSobel01 demoro: 301189136
+asmSobel11 demoro: 510795948
+asmPrewitt10 demoro: 216600808
+asmPrewitt01 demoro: 308188096
+asmPrewitt11 demoro: 523424262
+asmRoberts10 demoro: 187772463
+asmRoberts01 demoro: 188300933
+asmRoberts11 demoro: 375835966
+asmFreiChen10 demoro: 774139846
+asmFreiChen01 demoro: 1004473840
+asmFreiChen11 demoro: 1780969062
+-------------------------------------------------------------------------------------------
+proposito general (25 corridas):
+asmSobel01 tarda en un promedio de 25 corridas: 1951103136
+asmSobel10 tarda en un promedio de 25 corridas: 1860946539
+asmSobel11 tarda en un promedio de 25 corridas: -688392667
+asmSobel10 demoro: 1950112160
+asmSobel01 demoro: 1859535182
+asmSobel11 demoro: -687698119
+asmPrewitt10 demoro: 1836947486
+asmPrewitt01 demoro: 1865921386
+asmPrewitt11 demoro: -796757633
+asmRoberts10 demoro: 1961670537
+asmRoberts01 demoro: 775878759
+asmRoberts11 demoro: -1761325656
+
